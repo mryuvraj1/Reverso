@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalUriHandler
@@ -166,7 +165,6 @@ private fun ReversoApp() {
                     modifier = Modifier.fillMaxWidth().weight(1f).background(Panel).padding(12.dp),
                     textStyle = editorStyle,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default),
-                    keyboardActions = KeyboardActions(default = {}),
                     decorationBox = { inner ->
                         Box(Modifier.fillMaxSize()) {
                             if (active.text.isEmpty()) Text("Start writing…", color = Muted, style = editorStyle)
