@@ -1,32 +1,36 @@
 # File index
 
-Inventory generated from the current tracked-working-tree candidate. Generated build folders are excluded.
+Inventory generated from the current repository tree. Gradle, Rust, and other build output folders are excluded.
 
 | File | Purpose | Main responsibility | Related modules |
 |---|---|---|---|
-| `.github/ISSUE_TEMPLATE/bug_report.md` | GitHub workflow/template | Repository automation and contribution flow | Repository |
-| `.github/ISSUE_TEMPLATE/feature_request.md` | GitHub workflow/template | Repository automation and contribution flow | Repository |
-| `.github/pull_request_template.md` | GitHub workflow/template | Repository automation and contribution flow | Repository |
-| `.github/workflows/ci.yml` | GitHub workflow/template | Repository automation and contribution flow | Repository |
-| `.gitignore` | Project configuration or guidance | Build, policy, or project metadata | Workspace |
-| `CHANGELOG.md` | Project configuration or guidance | Build, policy, or project metadata | Workspace |
-| `CODE_OF_CONDUCT.md` | Project configuration or guidance | Build, policy, or project metadata | Workspace |
-| `CONTRIBUTING.md` | Project configuration or guidance | Build, policy, or project metadata | Workspace |
-| `Cargo.toml` | Project configuration or guidance | Rust workspace metadata | Workspace |
-| `Hi` | Project configuration or guidance | Build, policy, or project metadata | Workspace |
-| `LICENSE` | Project configuration or guidance | Apache license terms | Workspace |
-| `README.md` | Project configuration or guidance | Project entry point | Workspace |
-| `SECURITY.md` | Project configuration or guidance | Build, policy, or project metadata | Workspace |
-| `app/build.gradle.kts` | Project configuration or guidance | Android module build | Workspace |
-| `app/src/main/AndroidManifest.xml` | Project configuration or guidance | Build, policy, or project metadata | Workspace |
-| `app/src/main/java/dev/reverso/MainActivity.kt` | Android Kotlin source | Compose app and app-private text editing | Android app |
-| `app/src/main/res/values/styles.xml` | Project configuration or guidance | Build, policy, or project metadata | Workspace |
-| `build.gradle.kts` | Project configuration or guidance | Android plugin versions | Workspace |
-| `crates/editor-engine/Cargo.toml` | Project configuration or guidance | Build, policy, or project metadata | Workspace |
-| `crates/editor-engine/src/lib.rs` | Rust source | Editor state, history, search and indexing | Rust workspace |
-| `crates/text-buffer/Cargo.toml` | Project configuration or guidance | Build, policy, or project metadata | Workspace |
-| `crates/text-buffer/src/lib.rs` | Rust source | UTF-8-safe buffer operations | Rust workspace |
-| `gradle.properties` | Project configuration or guidance | Build, policy, or project metadata | Workspace |
+| `.github/ISSUE_TEMPLATE/bug_report.md` | GitHub workflow/template | CI or contribution workflow | Repository |
+| `.github/ISSUE_TEMPLATE/feature_request.md` | GitHub workflow/template | CI or contribution workflow | Repository |
+| `.github/pull_request_template.md` | GitHub workflow/template | CI or contribution workflow | Repository |
+| `.github/workflows/ci.yml` | GitHub workflow/template | CI or contribution workflow | Repository |
+| `.gitignore` | Configuration or project guidance | Build, policy, or project metadata | Workspace |
+| `CHANGELOG.md` | Configuration or project guidance | Build, policy, or project metadata | Workspace |
+| `CODE_OF_CONDUCT.md` | Configuration or project guidance | Build, policy, or project metadata | Workspace |
+| `CONTRIBUTING.md` | Configuration or project guidance | Build, policy, or project metadata | Workspace |
+| `Cargo.toml` | Configuration or project guidance | Rust workspace definition | Workspace |
+| `LICENSE` | Configuration or project guidance | Project license terms | Workspace |
+| `README.md` | Configuration or project guidance | Project entry point | Workspace |
+| `SECURITY.md` | Configuration or project guidance | Build, policy, or project metadata | Workspace |
+| `app/build.gradle.kts` | Configuration or project guidance | Android module build | Workspace |
+| `app/src/main/AndroidManifest.xml` | Configuration or project guidance | Android app metadata and permissions | Workspace |
+| `app/src/main/java/dev/reverso/MainActivity.kt` | Android Kotlin source | Android editor or release check | Android app |
+| `app/src/main/java/dev/reverso/ReleaseChecker.kt` | Android Kotlin source | Android editor or release check | Android app |
+| `app/src/main/res/values/styles.xml` | Configuration or project guidance | System theme styling | Workspace |
+| `build.gradle.kts` | Configuration or project guidance | Android plugin versions | Workspace |
+| `crates/editor-engine/Cargo.toml` | Configuration or project guidance | Build, policy, or project metadata | Workspace |
+| `crates/editor-engine/src/lib.rs` | Rust source | UTF-8 buffer/editor implementation | Rust workspace |
+| `crates/text-buffer/Cargo.toml` | Configuration or project guidance | Build, policy, or project metadata | Workspace |
+| `crates/text-buffer/src/lib.rs` | Rust source | UTF-8 buffer/editor implementation | Rust workspace |
+| `gradle/wrapper/gradle-wrapper.jar` | Gradle wrapper | Pinned Gradle 8.9 launcher | Android build |
+| `gradle/wrapper/gradle-wrapper.properties` | Gradle wrapper | Pinned Gradle 8.9 launcher | Android build |
+| `gradle.properties` | Configuration or project guidance | Gradle build settings | Workspace |
+| `gradlew` | Gradle wrapper | Pinned Gradle 8.9 launcher | Android build |
+| `gradlew.bat` | Gradle wrapper | Pinned Gradle 8.9 launcher | Android build |
 | `project-knowledge/00-PROJECT-OVERVIEW.md` | Project documentation | 00 PROJECT OVERVIEW | Project knowledge |
 | `project-knowledge/01-ARCHITECTURE.md` | Project documentation | 01 ARCHITECTURE | Project knowledge |
 | `project-knowledge/02-REPOSITORY-STRUCTURE.md` | Project documentation | 02 REPOSITORY STRUCTURE | Project knowledge |
@@ -44,6 +48,6 @@ Inventory generated from the current tracked-working-tree candidate. Generated b
 | `project-knowledge/14-ROADMAP.md` | Project documentation | 14 ROADMAP | Project knowledge |
 | `project-knowledge/15-DECISIONS-AND-TRADEOFFS.md` | Project documentation | 15 DECISIONS AND TRADEOFFS | Project knowledge |
 | `project-knowledge/16-CHANGELOG.md` | Project documentation | 16 CHANGELOG | Project knowledge |
-| `settings.gradle.kts` | Project configuration or guidance | Gradle modules and repositories | Workspace |
+| `project-knowledge/TASK-TRACKER.md` | Project documentation | TASK TRACKER | Project knowledge |
+| `settings.gradle.kts` | Configuration or project guidance | Gradle modules and repositories | Workspace |
 | `project-knowledge/FILE-INDEX.md` | Project documentation | Inventory of repository files | Project knowledge |
-| `project-knowledge/TASK-TRACKER.md` | Project documentation | Phase 1 status and follow-up tasks | Project knowledge |

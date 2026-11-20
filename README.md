@@ -7,13 +7,14 @@ Reverso is an open-source, Android-first mobile development environment. This re
 ## Current implementation
 
 - Rust workspace: UTF-8 safe text edits, cursor and selection state, undo/redo, line/column lookup, search, and replace.
-- Android app: local app-private workspace, create/open/save text files, and an editable dark Compose screen.
-- Rust/JNI loading, syntax highlighting, multi-tab editing, project tree operations, external storage picker, Termux bridge, cloud, and Git integration are not implemented yet.
+- Android app: dark Compose editor, multiple tabs, Android document picker open/save, basic find and replace, and Ctrl+S/Ctrl+F hardware keyboard shortcuts.
+- On startup, the app checks published GitHub Releases and shows an in-app notice when a newer stable release is available. The notice links to the release page; it does not download or install an update.
+- Rust/JNI loading, syntax highlighting, project tree operations, Termux bridge, cloud, and Git integration are not implemented yet.
 
 ## Build
 
 Rust (stable): `cargo fmt --check`, `cargo test --workspace`, `cargo clippy --workspace --all-targets`.
-Android: install Android SDK 35 and Gradle 8.9+; then run `gradle assembleDebug` from the repository root. The Gradle wrapper is not included in this initial workspace.
+Android: install Android SDK platform 35, then run `./gradlew assembleDebug` from the repository root. The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`.
 
 ## Project knowledge
 
