@@ -12,6 +12,7 @@ Inventory generated from the current repository tree. Gradle, Rust, and other bu
 | `CHANGELOG.md` | Configuration or project guidance | Build, policy, or project metadata | Workspace |
 | `CODE_OF_CONDUCT.md` | Configuration or project guidance | Build, policy, or project metadata | Workspace |
 | `CONTRIBUTING.md` | Configuration or project guidance | Build, policy, or project metadata | Workspace |
+| `Cargo.lock` | Configuration or project guidance | Reproducible Cargo dependency lockfile | Workspace |
 | `Cargo.toml` | Configuration or project guidance | Rust workspace definition | Workspace |
 | `LICENSE` | Configuration or project guidance | Project license terms | Workspace |
 | `README.md` | Configuration or project guidance | Project entry point | Workspace |

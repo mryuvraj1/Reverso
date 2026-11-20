@@ -10,33 +10,75 @@ pub enum BufferError {
 
 /// Owns document text and exposes byte-offset edits only at UTF-8 boundaries.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct TextBuffer { text: String }
+pub struct TextBuffer {
+    text: String,
+}
 
 impl TextBuffer {
-    pub fn new(text: impl Into<String>) -> Self { Self { text: text.into() } }
-    pub fn as_str(&self) -> &str { &self.text }
-    pub fn len_bytes(&self) -> usize { self.text.len() }
-    pub fn is_empty(&self) -> bool { self.text.is_empty() }
-    pub fn is_char_boundary(&self, index: usize) -> bool { self.text.is_char_boundary(index) }
+    pub fn new(text: impl Into<String>) -> Self {
+        Self { text: text.into() }
+    }
+    pub fn as_str(&self) -> &str {
+        &self.text
+    }
+    pub fn len_bytes(&self) -> usize {
+        self.text.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.text.is_empty()
+    }
+    pub fn is_char_boundary(&self, index: usize) -> bool {
+        self.text.is_char_boundary(index)
+    }
 
-    fn validate(&self, range: &Range<usize>) -> Result<(), BufferError> {
-        if range.start > range.end { return Err(BufferError::InvalidRange { start: range.start, end: range.end }); }
+    /// Validate a UTF-8 byte offset without changing the buffer.
+    pub fn validate_offset(&self, index: usize) -> Result<(), BufferError> {
+        self.validate_range(&(index..index))
+    }
+
+    /// Validate an edit range without changing the buffer.
+    pub fn validate_range(&self, range: &Range<usize>) -> Result<(), BufferError> {
+        if range.start > range.end {
+            return Err(BufferError::InvalidRange {
+                start: range.start,
+                end: range.end,
+            });
+        }
         for index in [range.start, range.end] {
-            if index > self.text.len() { return Err(BufferError::OutOfBounds { index, len: self.text.len() }); }
-            if !self.text.is_char_boundary(index) { return Err(BufferError::NotCharBoundary { index }); }
+            if index > self.text.len() {
+                return Err(BufferError::OutOfBounds {
+                    index,
+                    len: self.text.len(),
+                });
+            }
+            if !self.text.is_char_boundary(index) {
+                return Err(BufferError::NotCharBoundary { index });
+            }
         }
         Ok(())
     }
 
+    fn validate(&self, range: &Range<usize>) -> Result<(), BufferError> {
+        self.validate_range(range)
+    }
+
     /// Replace a valid byte range, returning the removed text for undo.
-    pub fn replace(&mut self, range: Range<usize>, replacement: &str) -> Result<String, BufferError> {
+    pub fn replace(
+        &mut self,
+        range: Range<usize>,
+        replacement: &str,
+    ) -> Result<String, BufferError> {
         self.validate(&range)?;
         let removed = self.text[range.clone()].to_owned();
         self.text.replace_range(range, replacement);
         Ok(removed)
     }
-    pub fn insert(&mut self, at: usize, text: &str) -> Result<(), BufferError> { self.replace(at..at, text).map(|_| ()) }
-    pub fn delete(&mut self, range: Range<usize>) -> Result<String, BufferError> { self.replace(range, "") }
+    pub fn insert(&mut self, at: usize, text: &str) -> Result<(), BufferError> {
+        self.replace(at..at, text).map(|_| ())
+    }
+    pub fn delete(&mut self, range: Range<usize>) -> Result<String, BufferError> {
+        self.replace(range, "")
+    }
 }
 
 #[cfg(test)]
@@ -52,7 +94,13 @@ mod tests {
     #[test]
     fn rejects_mid_codepoint_and_out_of_bounds() {
         let mut b = TextBuffer::new("🦀");
-        assert_eq!(b.delete(1..2), Err(BufferError::NotCharBoundary { index: 1 }));
-        assert_eq!(b.insert(9, "x"), Err(BufferError::OutOfBounds { index: 9, len: 4 }));
+        assert_eq!(
+            b.delete(1..2),
+            Err(BufferError::NotCharBoundary { index: 1 })
+        );
+        assert_eq!(
+            b.insert(9, "x"),
+            Err(BufferError::OutOfBounds { index: 9, len: 4 })
+        );
     }
 }
