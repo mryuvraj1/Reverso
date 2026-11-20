@@ -1,0 +1,11 @@
+[package]
+name = "reverso-editor-engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+reverso-text-buffer = { path = "../text-buffer" }
+
+[lints]
+workspace = true

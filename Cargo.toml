@@ -1,0 +1,11 @@
+[workspace]
+resolver = "2"
+members = ["crates/text-buffer", "crates/editor-engine"]
+
+[workspace.package]
+edition = "2021"
+license = "Apache-2.0"
+version = "0.1.0"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
