@@ -3,7 +3,7 @@
 ## Unreleased
 
 - Add official GitHub Releases update checks, stable/beta settings, WorkManager scheduling, cached release history, in-app notices and deduplicated Android notifications.
-- Add bounded compatible APK downloads, GitHub SHA-256 verification when supplied, and explicit user-confirmed Android installer handoff; report releases without APK assets as source-only.
+- Add bounded universal/device-ABI-compatible APK downloads, GitHub SHA-256 verification when supplied, and explicit user-confirmed Android installer handoff; report releases without APK assets as source-only.
 - Preserve exact source filenames and add SAF-backed project storage/file operations (see current implementation notes in `project-knowledge/`).
 
 ## Unreleased

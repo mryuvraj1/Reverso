@@ -29,6 +29,14 @@ internal fun releaseNeedsNotification(candidateTag: String?, lastNotifiedTag: St
 internal fun sha256DigestMatches(expected: String, actual: String): Boolean =
     expected.startsWith("sha256:", ignoreCase = true) && expected.substringAfter(':').equals(actual, ignoreCase = true)
 
+internal fun selectCompatibleApkAsset(candidates: List<ReleaseAsset>, supportedAbis: List<String>): ReleaseAsset? {
+    val apks = candidates.filter { it.name.endsWith(".apk", ignoreCase = true) }
+    apks.firstOrNull { it.name.contains("universal", ignoreCase = true) }?.let { return it }
+    apks.firstOrNull { asset -> supportedAbis.any { asset.name.contains(it, ignoreCase = true) } }?.let { return it }
+    val architectureLabels = listOf("armeabi-v7a", "arm64-v8a", "arm64", "x86_64", "x86")
+    return apks.singleOrNull()?.takeUnless { asset -> architectureLabels.any { asset.name.contains(it, ignoreCase = true) } }
+}
+
 internal fun releaseCheckFailure(cached: List<AvailableRelease>, checkedAt: Long, message: String) =
     ReleaseCheckResult(cached, checkedAt, message)
 
@@ -159,10 +167,7 @@ internal object ReleaseChecker {
                 val url = officialAssetUrl(item.optString("browser_download_url")) ?: return@mapNotNull null
                 ReleaseAsset(name, url, item.optString("digest").takeIf(String::isNotBlank), item.optLong("size"))
             }
-        if (candidates.isEmpty()) return null
-        return candidates.firstOrNull { it.name.contains("universal", true) }
-            ?: candidates.firstOrNull { asset -> Build.SUPPORTED_ABIS.any { asset.name.contains(it, true) } }
-            ?: candidates.singleOrNull()
+        return selectCompatibleApkAsset(candidates, Build.SUPPORTED_ABIS.toList())
     }
 
     private fun officialAssetUrl(value: String): String? = runCatching {

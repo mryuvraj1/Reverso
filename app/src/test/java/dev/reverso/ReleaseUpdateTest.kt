@@ -29,6 +29,16 @@ class ReleaseUpdateTest {
         assertEquals(sourceOnly, selectNewerRelease(listOf(sourceOnly), "0.1.0", includeBeta = false))
     }
 
+    @Test fun apkSelectionPrefersUniversalOrSupportedAbiAndRejectsKnownIncompatibleAbi() {
+        val universal = ReleaseAsset("reverso-universal.apk", "https://github.com/mryuvraj1/Reverso/releases/download/v1/reverso-universal.apk", null, 100)
+        val arm = ReleaseAsset("reverso-arm64-v8a.apk", "https://github.com/mryuvraj1/Reverso/releases/download/v1/reverso-arm64-v8a.apk", null, 100)
+        val x86 = ReleaseAsset("reverso-x86_64.apk", "https://github.com/mryuvraj1/Reverso/releases/download/v1/reverso-x86_64.apk", null, 100)
+        assertEquals(universal, selectCompatibleApkAsset(listOf(arm, universal), listOf("arm64-v8a")))
+        assertEquals(arm, selectCompatibleApkAsset(listOf(arm, x86), listOf("arm64-v8a")))
+        assertNull(selectCompatibleApkAsset(listOf(x86), listOf("arm64-v8a")))
+        assertNull(selectCompatibleApkAsset(emptyList(), listOf("arm64-v8a")))
+    }
+
     @Test fun notificationAndChecksumHelpersRejectDuplicatesAndMismatches() {
         assertTrue(releaseNeedsNotification("0.2.0", null))
         assertFalse(releaseNeedsNotification("0.2.0", "0.2.0"))
