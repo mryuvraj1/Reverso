@@ -35,6 +35,7 @@ internal data class AiProviderConfig(
     val model: String,
 ) {
     fun validationError(): String? {
+        if (endpoint.isBlank()) return "Enter a valid HTTPS API endpoint"
         val parsed = runCatching { URI(endpoint.trim()) }.getOrNull()
             ?: return "Enter a valid HTTPS API endpoint"
         if (parsed.scheme != "https" || parsed.host.isNullOrBlank() || parsed.rawUserInfo != null || parsed.rawQuery != null || parsed.rawFragment != null) {
