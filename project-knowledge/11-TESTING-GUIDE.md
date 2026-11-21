@@ -12,6 +12,10 @@ Run `./gradlew :app:assembleDebug` with Android SDK platform 35 installed. The A
 
 Run `cargo fmt --check`, `cargo test --workspace`, and `cargo clippy --workspace --all-targets`. The Rust library tests do not establish JNI integration; no JNI layer is currently wired into Android.
 
+## Latest verification
+
+Commit `766f460` passed GitHub Actions run `44900754961`: Rust formatting/tests/Clippy, Android `testDebugUnitTest`, `assembleDebug`, and `lint` all succeeded. The debug APK was uploaded as the `reverso-android-debug-apk` artifact.
+
 ## Honest limitations
 
 The terminal panel is explanatory UI until an authenticated Termux bridge is implemented. Git, debugger, extension marketplace, LSP, and Rust/JNI integrations are also unavailable and must not be tested as if operational. Android instrumentation/device tests are not yet present.

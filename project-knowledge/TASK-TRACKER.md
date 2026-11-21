@@ -7,7 +7,7 @@
 - [x] Add an in-app startup popup for newer published GitHub releases.
 - [x] Add repository metadata, CI definition, and implementation documentation.
 - [x] Add model and version comparison unit tests.
-- [ ] Verify revised Android UI build and unit tests in CI; local Termux has no Android SDK.
+- [x] Verify revised Android UI build, unit tests and lint in GitHub Actions; local Termux has no Android SDK.
 - [ ] Connect Android editor to Rust through JNI and establish offset conversion tests.
 - [ ] Add Android instrumentation/device tests for SAF, orientation and external keyboard.
 - [ ] Implement supported authenticated Termux interactive session integration in Phase 2.
