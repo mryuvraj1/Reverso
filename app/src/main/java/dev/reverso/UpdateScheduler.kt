@@ -1,5 +1,6 @@
 package dev.reverso
 
+import android.annotation.SuppressLint
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -67,6 +68,7 @@ internal object UpdateNotification {
         return Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
     }
 
+    @SuppressLint("MissingPermission") // notificationsAllowed checks app preference, system state, and POST_NOTIFICATIONS before this call.
     fun notifyForNewRelease(context: Context, release: AvailableRelease?) {
         if (release == null || !notificationsAllowed(context) || !releaseNeedsNotification(release.tag, UpdatePreferences.lastNotified(context))) return
         ensureChannel(context)
