@@ -7,6 +7,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -20,19 +29,22 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.documentfile.provider.DocumentFile
 import dev.reverso.ui.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.IOException
 
@@ -53,6 +65,7 @@ private fun ReversoApp() {
     var bottomTool by remember { mutableStateOf(BottomTool.TERMINAL) }
     var bottomOpen by remember { mutableStateOf(false) }
     var bottomHeight by remember { mutableFloatStateOf(190f) }
+    var sidebarOverride by remember { mutableStateOf<Boolean?>(null) }
     var workspace by remember { mutableStateOf<ProjectWorkspace?>(null) }
     val expandedFolders = remember { mutableStateListOf<String>() }
     var recents by remember { mutableStateOf(RecentProjects.load(context)) }
@@ -69,6 +82,14 @@ private fun ReversoApp() {
     var pendingProjectName by remember { mutableStateOf<String?>(null) }
     var pendingRelease by remember { mutableStateOf<AvailableRelease?>(null) }
     var splitMode by remember { mutableStateOf(false) }
+    var aiConfig by remember { mutableStateOf(AiConfigRepository.load(context)) }
+    var credentialSaved by remember { mutableStateOf(aiConfig?.let { SecureCredentialStore.has(context, it.provider) } ?: false) }
+    val aiMessages = remember { mutableStateListOf<AiMessage>() }
+    var aiLoading by remember { mutableStateOf(false) }
+    var aiError by remember { mutableStateOf<String?>(null) }
+    var showAiSettings by remember { mutableStateOf(false) }
+    var showApplyConfirmation by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
     val active = tabs.firstOrNull { it.id == activeId }
     val treeItems = remember(workspace, workspace?.root, expandedFolders.toList()) {
         workspace?.let { listWorkspaceItems(it.root, expandedFolders.toSet()) }.orEmpty()
@@ -87,6 +108,7 @@ private fun ReversoApp() {
         val existing = tabs.indexOfFirst { it.uri != null && it.uri == tab.uri }
         if (existing >= 0) activeId = tabs[existing].id else { tabs.add(tab); activeId = tab.id }
         activity = IdeActivity.EXPLORER
+        if (sidebarOverride == true) sidebarOverride = false
     }
     fun openUri(uri: Uri, title: String) {
         runCatching {
@@ -106,6 +128,43 @@ private fun ReversoApp() {
             updateTab(updated); status = "Saved ${tab.title}"; log("Saved ${tab.title}")
         }.onFailure { status = "Save failed: ${it.message ?: "unknown error"}" }
     }
+    fun sendAi(prompt: String, includeActiveFile: Boolean) {
+        val config = aiConfig
+        if (config == null || !credentialSaved) {
+            aiError = "Configure an AI provider and save its API key first."
+            activity = IdeActivity.AI_CHAT
+            sidebarOverride = true
+            return
+        }
+        val apiKey = try { SecureCredentialStore.get(context, config.provider) } catch (_: Exception) {
+            aiError = "The saved key could not be decrypted. Save the provider key again in AI settings."
+            return
+        }
+        if (apiKey.isNullOrBlank()) {
+            aiError = "No API key is saved. Configure an AI provider first."
+            return
+        }
+        val fileContext = if (includeActiveFile) active?.let { tab ->
+            val clipped = tab.value.text.take(12_000)
+            "Active file: ${tab.title}\n```\n$clipped${if (tab.value.text.length > clipped.length) "\n[File context truncated at 12,000 characters]" else ""}\n```"
+        } else null
+        aiMessages.add(AiMessage("user", prompt, fileContext))
+        val requestHistory = aiMessages.toList()
+        aiError = null
+        aiLoading = true
+        coroutineScope.launch {
+            try {
+                val response = withContext(Dispatchers.IO) { AiChatClient.complete(config, apiKey, requestHistory) }
+                aiMessages.add(AiMessage("assistant", response))
+                log("AI response received from ${config.provider.label}")
+            } catch (error: Exception) {
+                aiError = error.message?.take(240) ?: "AI request failed. Check your connection and provider configuration."
+                log("AI request failed (${config.provider.label})")
+            } finally {
+                aiLoading = false
+            }
+        }
+    }
 
     val openDocument = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) openUri(uri, uri.lastPathSegment?.substringAfterLast('/')?.substringAfterLast(':')?.takeIf(String::isNotBlank) ?: "untitled.txt")
@@ -121,6 +180,7 @@ private fun ReversoApp() {
             val recent = RecentProject(root.name ?: "Workspace", recentUri.toString())
             RecentProjects.remember(context, recent); recents = RecentProjects.load(context)
             activity = IdeActivity.EXPLORER; status = if (projectName == null) "Workspace opened: ${recent.name}" else "Project created: ${recent.name}"; log(status)
+            sidebarOverride = true
             pendingProjectName = null; newProjectName = ""
         }.onFailure { status = "Folder open failed: ${it.message ?: "unknown error"}"; pendingProjectName = null }
         else pendingProjectName = null
@@ -178,48 +238,115 @@ private fun ReversoApp() {
         dismissButton = { TextButton(onClick = { createDialog = false }) { Text("Cancel") } },
     )
 
+    if (showAiSettings) Dialog(
+        onDismissRequest = { showAiSettings = false },
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+            shape = RoundedCornerShape(20.dp), color = ReversoColors.Background,
+        ) {
+            AiProviderSettingsScreen(
+                initialConfig = aiConfig,
+                configFor = { provider -> AiConfigRepository.loadFor(context, provider) },
+                credentialSavedFor = { provider -> SecureCredentialStore.has(context, provider) },
+                onSave = { config, key -> runCatching {
+                    AiConfigRepository.save(context, config, key)
+                    aiConfig = config
+                    credentialSaved = SecureCredentialStore.has(context, config.provider)
+                    null
+                }.getOrElse { "Could not save provider: ${it.message ?: "secure storage failed"}" } },
+                onClear = { provider -> runCatching {
+                    AiConfigRepository.clear(context, provider)
+                    if (aiConfig?.provider == provider) aiConfig = null
+                    credentialSaved = aiConfig?.let { SecureCredentialStore.has(context, it.provider) } ?: false
+                    aiMessages.clear()
+                    null
+                }.getOrElse { "Could not clear provider credentials: ${it.message ?: "secure storage failed"}" } },
+                onDone = { showAiSettings = false },
+            )
+        }
+    }
+
+    val latestAiResponse = aiMessages.lastOrNull { it.role == "assistant" }?.content
+    if (showApplyConfirmation) AlertDialog(
+        onDismissRequest = { showApplyConfirmation = false },
+        title = { Text("Replace ${active?.title ?: "editor"}?") },
+        text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("This replaces the complete in-memory file with the latest AI response. Review the response before applying.")
+            Text(latestAiResponse.orEmpty().take(800), color = ReversoColors.Muted, maxLines = 8)
+        } },
+        confirmButton = { TextButton(onClick = {
+            val tab = active
+            val response = latestAiResponse
+            if (tab != null && response != null) updateTab(tab.copy(value = TextFieldValue(response), dirty = true))
+            showApplyConfirmation = false
+        }) { Text("Replace file") } },
+        dismissButton = { TextButton(onClick = { showApplyConfirmation = false }) { Text("Cancel") } },
+    )
+
     BoxWithConstraints(Modifier.fillMaxSize().background(ReversoColors.Background).onPreviewKeyEvent { event ->
         if (event.type == KeyEventType.KeyDown && event.isCtrlPressed && event.key == Key.S) { active?.let { if (it.uri == null) saveDocument.launch(it.title) else saveTab(it) }; true }
         else if (event.type == KeyEventType.KeyDown && event.isCtrlPressed && event.key == Key.F) { findDialog = true; true }
         else false
     }) {
         val wide = maxWidth >= 720.dp
+        val sidebarVisible = sidebarOverride ?: wide
         val availableScreenMaxHeight = maxHeight
         val availableScreenHeight = availableScreenMaxHeight.value
         Column(Modifier.fillMaxSize()) {
-            Header(active?.title, onHome = { activity = IdeActivity.EXPLORER; activeId = null }, onOpen = { openDocument.launch(arrayOf("text/*", "application/json", "application/xml", "application/octet-stream")) }, onSave = { active?.let { if (it.uri == null) saveDocument.launch(it.title) else saveTab(it) } }, onFind = { findDialog = true }, onSplit = { if (wide && tabs.size > 1) splitMode = !splitMode else status = "Split view needs a second open file and a wide screen" }, onTerminal = { bottomTool = BottomTool.TERMINAL; bottomOpen = !bottomOpen })
+            Header(active?.title, sidebarVisible, wide, onToggleSidebar = { sidebarOverride = !sidebarVisible }, onHome = { activity = IdeActivity.EXPLORER; activeId = null; sidebarOverride = false }, onOpen = { openDocument.launch(arrayOf("text/*", "application/json", "application/xml", "application/octet-stream")) }, onSave = { active?.let { if (it.uri == null) saveDocument.launch(it.title) else saveTab(it) } }, onFind = { findDialog = true }, onSplit = { if (tabs.size > 1) splitMode = !splitMode else status = "Open a second file before splitting the editor" }, onToggleBottom = { if (!bottomOpen) bottomTool = BottomTool.TERMINAL; bottomOpen = !bottomOpen })
             if (wide) {
                 Row(Modifier.weight(1f).fillMaxWidth()) {
-                    ActivityRail(activity) { activity = it }
-                    if (activity == IdeActivity.EXPLORER || activity == IdeActivity.SEARCH) {
-                        SidePanel(activity, workspace?.name, treeItems, tabs, activeId, query, { query = it },
-                            onOpenFolder = { openFolder.launch(null) }, onOpenFile = { openDocument.launch(arrayOf("text/*", "application/json", "application/xml", "application/octet-stream")) },
+                    AnimatedVisibility(
+                        visible = sidebarVisible,
+                        enter = expandHorizontally(expandFrom = Alignment.Start) + slideInHorizontally { -it / 3 } + fadeIn(),
+                        exit = shrinkHorizontally(shrinkTowards = Alignment.Start) + slideOutHorizontally { -it / 3 } + fadeOut(),
+                    ) {
+                        IdeSidebar(activity, true, workspace?.name, treeItems, tabs, activeId, query, aiMessages, aiConfig != null && credentialSaved, aiLoading, aiError,
+                            onActivity = { activity = it }, onQuery = { query = it }, onOpenFolder = { openFolder.launch(null) },
+                            onOpenFile = { openDocument.launch(arrayOf("text/*", "application/json", "application/xml", "application/octet-stream")) },
                             onCreateFile = { createFolder = false; createDialog = true }, onCreateFolder = { createFolder = true; createDialog = true },
-                            onFile = { if (it.isDirectory) { if (it.id in expandedFolders) expandedFolders.remove(it.id) else expandedFolders.add(it.id) } else openUri(it.uri, it.name) }, onTab = { activeId = it.id; activity = IdeActivity.EXPLORER }, modifier = Modifier.width(270.dp))
-                    } else ActivityPage(activity, workspace?.name, recents, onOpenFolder = { openFolder.launch(null) }, onOpenDocument = { openDocument.launch(arrayOf("text/*", "application/json", "application/xml")) }, onRecent = { RecentProjects.open(context, it)?.let { ws -> workspace = ws; activity = IdeActivity.EXPLORER } })
+                            onFile = { if (it.isDirectory) { if (it.id in expandedFolders) expandedFolders.remove(it.id) else expandedFolders.add(it.id) } else openUri(it.uri, it.name) },
+                            onTab = { activeId = it.id; activity = IdeActivity.EXPLORER }, onAiConfigure = { showAiSettings = true },
+                            onAiSend = ::sendAi, onAiApply = { if (active != null && latestAiResponse != null) showApplyConfirmation = true else aiError = "Open a file and request an AI response before applying." },
+                            onRecent = { RecentProjects.open(context, it)?.let { ws -> workspace = ws; activity = IdeActivity.EXPLORER } },
+                            modifier = Modifier.fillMaxHeight())
+                    }
                     Column(Modifier.weight(1f).fillMaxHeight()) {
-                        if (activity == IdeActivity.EXPLORER || activity == IdeActivity.SEARCH) EditorArea(active, tabs, activeId, splitMode, workspace?.name, recents,
+                        EditorArea(active, tabs, activeId, splitMode, workspace?.name, recents,
                             onSelect = { activeId = it.id }, onClose = { tabs.remove(it); if (activeId == it.id) activeId = tabs.lastOrNull()?.id }, onValue = ::updateTab,
                             onWorkspace = { activity = IdeActivity.EXPLORER }, onInsert = { active?.let { tab -> updateTab(insertAtSelection(tab, it)) } }, onWelcome = { activeId = null },
                             onNew = { newProjectDialog = true },
-                            onOpen = { openDocument.launch(arrayOf("text/*", "application/json", "application/xml", "application/octet-stream")) }, onFolder = { openFolder.launch(null) }, onRecent = { RecentProjects.open(context, it)?.let { ws -> workspace = ws; activity = IdeActivity.EXPLORER } }, onDocs = { runCatching { uriHandler.openUri("https://github.com/mryuvraj1/Reverso/tree/main/project-knowledge") } })
-                        else ActivityPage(activity, workspace?.name, recents, onOpenFolder = { openFolder.launch(null) }, onOpenDocument = { openDocument.launch(arrayOf("text/*", "application/json", "application/xml")) }, onRecent = { RecentProjects.open(context, it)?.let { ws -> workspace = ws; activity = IdeActivity.EXPLORER } })
-                        if (bottomOpen) BottomPanel(bottomTool, output, Modifier.height(bottomHeight.dp), onTool = { bottomTool = it }, onClose = { bottomOpen = false }, onDrag = { delta -> bottomHeight = (bottomHeight - delta).coerceIn(110f, 420f) })
+                            onOpen = { openDocument.launch(arrayOf("text/*", "application/json", "application/xml", "application/octet-stream")) }, onFolder = { openFolder.launch(null) }, onRecent = { RecentProjects.open(context, it)?.let { ws -> workspace = ws; activity = IdeActivity.EXPLORER } }, onDocs = { runCatching { uriHandler.openUri("https://github.com/mryuvraj1/Reverso/tree/main/project-knowledge") } }, modifier = Modifier.weight(1f))
+                        AnimatedVisibility(visible = bottomOpen, enter = expandVertically(expandFrom = Alignment.Bottom) + fadeIn(), exit = shrinkVertically(shrinkTowards = Alignment.Bottom) + fadeOut()) {
+                            BottomPanel(bottomTool, output, Modifier.height(bottomHeight.dp), onTool = { bottomTool = it }, onClose = { bottomOpen = false }, onDrag = { delta -> bottomHeight = (bottomHeight - delta).coerceIn(110f, 420f) })
+                        }
                     }
                 }
             } else {
-                Box(Modifier.weight(1f).fillMaxWidth()) {
-                    when (activity) {
-                        IdeActivity.EXPLORER -> if (active == null) WelcomeScreen(recents, onNew = { newProjectDialog = true }, onOpen = { openDocument.launch(arrayOf("text/*", "application/json", "application/xml", "application/octet-stream")) }, onFolder = { openFolder.launch(null) }, onRecent = { RecentProjects.open(context, it)?.let { ws -> workspace = ws; status = "Workspace opened: ${ws.name}" } }, onDocs = { runCatching { uriHandler.openUri("https://github.com/mryuvraj1/Reverso/tree/main/project-knowledge") } })
-                            else EditorArea(active, tabs, activeId, false, workspace?.name, recents, onSelect = { activeId = it.id }, onClose = { tabs.remove(it); if (activeId == it.id) activeId = tabs.lastOrNull()?.id }, onValue = ::updateTab, onWorkspace = { activity = IdeActivity.EXPLORER }, onInsert = { active?.let { tab -> updateTab(insertAtSelection(tab, it)) } }, onWelcome = { activeId = null }, onNew = { newProjectDialog = true }, onOpen = { openDocument.launch(arrayOf("text/*", "application/json", "application/xml", "application/octet-stream")) }, onFolder = { openFolder.launch(null) }, onRecent = { RecentProjects.open(context, it)?.let { ws -> workspace = ws } }, onDocs = { runCatching { uriHandler.openUri("https://github.com/mryuvraj1/Reverso/tree/main/project-knowledge") } })
-                        IdeActivity.SEARCH -> SearchPage(query, { query = it }, tabs, onSelect = { activeId = it.id; activity = IdeActivity.EXPLORER })
-                        else -> ActivityPage(activity, workspace?.name, recents, onOpenFolder = { openFolder.launch(null) }, onOpenDocument = { openDocument.launch(arrayOf("text/*", "application/json", "application/xml")) }, onRecent = { RecentProjects.open(context, it)?.let { ws -> workspace = ws; activity = IdeActivity.EXPLORER } })
+                Column(Modifier.weight(1f).fillMaxWidth()) {
+                    Box(Modifier.weight(1f).fillMaxWidth()) {
+                        AnimatedVisibility(visible = !sidebarVisible, modifier = Modifier.fillMaxSize(), enter = fadeIn(), exit = fadeOut()) {
+                            EditorArea(active, tabs, activeId, false, workspace?.name, recents, onSelect = { activeId = it.id }, onClose = { tabs.remove(it); if (activeId == it.id) activeId = tabs.lastOrNull()?.id }, onValue = ::updateTab, onWorkspace = { activity = IdeActivity.EXPLORER; sidebarOverride = true }, onInsert = { active?.let { tab -> updateTab(insertAtSelection(tab, it)) } }, onWelcome = { activeId = null }, onNew = { newProjectDialog = true }, onOpen = { openDocument.launch(arrayOf("text/*", "application/json", "application/xml", "application/octet-stream")) }, onFolder = { openFolder.launch(null) }, onRecent = { RecentProjects.open(context, it)?.let { ws -> workspace = ws; sidebarOverride = true } }, onDocs = { runCatching { uriHandler.openUri("https://github.com/mryuvraj1/Reverso/tree/main/project-knowledge") } })
+                        }
+                        AnimatedVisibility(visible = sidebarVisible, modifier = Modifier.fillMaxSize(), enter = fadeIn(), exit = fadeOut()) {
+                            IdeSidebar(activity, false, workspace?.name, treeItems, tabs, activeId, query, aiMessages, aiConfig != null && credentialSaved, aiLoading, aiError,
+                                onActivity = { activity = it }, onQuery = { query = it }, onOpenFolder = { openFolder.launch(null) },
+                                onOpenFile = { openDocument.launch(arrayOf("text/*", "application/json", "application/xml", "application/octet-stream")) },
+                                onCreateFile = { createFolder = false; createDialog = true }, onCreateFolder = { createFolder = true; createDialog = true },
+                                onFile = { if (it.isDirectory) { if (it.id in expandedFolders) expandedFolders.remove(it.id) else expandedFolders.add(it.id) } else openUri(it.uri, it.name) },
+                                onTab = { activeId = it.id; activity = IdeActivity.EXPLORER; sidebarOverride = false }, onAiConfigure = { showAiSettings = true },
+                                onAiSend = ::sendAi, onAiApply = { if (active != null && latestAiResponse != null) showApplyConfirmation = true else aiError = "Open a file and request an AI response before applying." },
+                                onRecent = { RecentProjects.open(context, it)?.let { ws -> workspace = ws; activity = IdeActivity.EXPLORER; sidebarOverride = true } }, modifier = Modifier.fillMaxSize())
+                        }
                     }
-                    if (bottomOpen && active != null && activity == IdeActivity.EXPLORER) Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) { BottomPanel(bottomTool, output, Modifier.height(bottomHeight.dp.coerceAtMost(availableScreenMaxHeight * 0.58f)), onTool = { bottomTool = it }, onClose = { bottomOpen = false }, onDrag = { delta -> bottomHeight = (bottomHeight - delta).coerceIn(110f, availableScreenHeight * .7f) }) }
+                    AnimatedVisibility(visible = bottomOpen, enter = expandVertically(expandFrom = Alignment.Bottom) + fadeIn(), exit = shrinkVertically(shrinkTowards = Alignment.Bottom) + fadeOut()) {
+                        BottomPanel(bottomTool, output, Modifier.height(bottomHeight.dp.coerceAtMost(availableScreenMaxHeight * 0.58f)), onTool = { bottomTool = it }, onClose = { bottomOpen = false }, onDrag = { delta -> bottomHeight = (bottomHeight - delta).coerceIn(110f, availableScreenHeight * .7f) })
+                    }
                 }
             }
-            if (active != null) StatusBar(active, status, onPanel = { bottomTool = it; bottomOpen = true })
-            if (!wide) MobileActivityBar(activity, { activity = it })
+            if (active != null) StatusBar(active, status)
         }
     }
 
@@ -231,15 +358,16 @@ private fun ReversoApp() {
 
 private fun mimeFor(name: String) = when (name.substringAfterLast('.', "").lowercase()) { "kt", "rs", "go", "ts", "js", "py", "sh", "txt", "md" -> "text/plain"; "json" -> "application/json"; "xml" -> "application/xml"; else -> "application/octet-stream" }
 
-@Composable private fun Header(title: String?, onHome: () -> Unit, onOpen: () -> Unit, onSave: () -> Unit, onFind: () -> Unit, onSplit: () -> Unit, onTerminal: () -> Unit) {
+@Composable private fun Header(title: String?, sidebarVisible: Boolean, showSplit: Boolean, onToggleSidebar: () -> Unit, onHome: () -> Unit, onOpen: () -> Unit, onSave: () -> Unit, onFind: () -> Unit, onSplit: () -> Unit, onToggleBottom: () -> Unit) {
     Row(Modifier.fillMaxWidth().height(58.dp).background(ReversoColors.Surface).padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = onToggleSidebar) { Icon(if (sidebarVisible) Icons.Filled.MenuOpen else Icons.Filled.Menu, "Toggle sidebar", tint = if (sidebarVisible) ReversoColors.Blue else ReversoColors.Muted) }
         ReversoMark(36.dp, Modifier.clickable(onClick = onHome)); Spacer(Modifier.width(9.dp))
         Column(Modifier.weight(1f).clickable(onClick = onHome)) { Text("REVERSO", style = MaterialTheme.typography.titleMedium, letterSpacing = 1.3.sp); Text(title ?: "Code anywhere · Build everything", color = ReversoColors.Muted, style = MaterialTheme.typography.labelSmall, maxLines = 1) }
         IconButton(onClick = onOpen) { Icon(Icons.Filled.FolderOpen, "Open file", tint = ReversoColors.Muted) }
         IconButton(onClick = onSave) { Icon(Icons.Filled.Save, "Save", tint = ReversoColors.Muted) }
         IconButton(onClick = onFind) { Icon(Icons.Filled.Search, "Find", tint = ReversoColors.Muted) }
-        IconButton(onClick = onSplit) { Icon(Icons.Filled.CallSplit, "Split editor", tint = ReversoColors.Muted) }
-        IconButton(onClick = onTerminal) { Icon(Icons.Filled.Terminal, "Terminal panel", tint = ReversoColors.Muted) }
+        if (showSplit) IconButton(onClick = onSplit) { Icon(Icons.Filled.CallSplit, "Split editor", tint = ReversoColors.Muted) }
+        IconButton(onClick = onToggleBottom) { Icon(Icons.Filled.Terminal, "Toggle bottom panel", tint = ReversoColors.Muted) }
     }
 }
 
@@ -249,21 +377,60 @@ private fun mimeFor(name: String) = when (name.substringAfterLast('.', "").lower
     }
 }
 
-@Composable private fun MobileActivityBar(selected: IdeActivity, onSelect: (IdeActivity) -> Unit) {
-    Row(Modifier.fillMaxWidth().height(58.dp).background(ReversoColors.Surface), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-        listOf(IdeActivity.EXPLORER, IdeActivity.SEARCH, IdeActivity.SOURCE_CONTROL, IdeActivity.RUN_DEBUG, IdeActivity.EXTENSIONS, IdeActivity.SETTINGS).forEach { item ->
-            IconButton(onClick = { onSelect(item) }, modifier = Modifier.size(46.dp)) { Icon(activityIcon(item), item.label, tint = if (selected == item) ReversoColors.Blue else ReversoColors.Muted) }
-        }
-    }
-}
-
 private fun activityIcon(item: IdeActivity) = when (item) {
     IdeActivity.EXPLORER -> Icons.Filled.AccountTree
     IdeActivity.SEARCH -> Icons.Filled.Search
     IdeActivity.SOURCE_CONTROL -> Icons.Filled.Source
     IdeActivity.RUN_DEBUG -> Icons.Filled.BugReport
     IdeActivity.EXTENSIONS -> Icons.Filled.Extension
+    IdeActivity.AI_CHAT -> Icons.Filled.AutoAwesome
     IdeActivity.SETTINGS -> Icons.Filled.Settings
+}
+
+@Composable private fun IdeSidebar(
+    activity: IdeActivity,
+    wide: Boolean,
+    workspace: String?,
+    treeItems: List<WorkspaceItem<DocumentFile>>,
+    tabs: List<EditorTab>,
+    activeId: String?,
+    query: String,
+    aiMessages: List<AiMessage>,
+    aiConfigured: Boolean,
+    aiLoading: Boolean,
+    aiError: String?,
+    onActivity: (IdeActivity) -> Unit,
+    onQuery: (String) -> Unit,
+    onOpenFolder: () -> Unit,
+    onOpenFile: () -> Unit,
+    onCreateFile: () -> Unit,
+    onCreateFolder: () -> Unit,
+    onFile: (WorkspaceItem<DocumentFile>) -> Unit,
+    onTab: (EditorTab) -> Unit,
+    onAiConfigure: () -> Unit,
+    onAiSend: (String, Boolean) -> Unit,
+    onAiApply: () -> Unit,
+    onRecent: (RecentProject) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(modifier.background(ReversoColors.Surface).then(if (wide) Modifier.width(if (activity == IdeActivity.AI_CHAT) 380.dp else 330.dp) else Modifier.fillMaxWidth())) {
+        ActivityRail(activity, onActivity)
+        when (activity) {
+            IdeActivity.EXPLORER, IdeActivity.SEARCH -> SidePanel(
+                activity, workspace, treeItems, tabs, activeId, query, onQuery, onOpenFolder, onOpenFile,
+                onCreateFile, onCreateFolder, onFile, onTab, Modifier.weight(1f),
+            )
+            IdeActivity.AI_CHAT -> AiChatScreen(
+                messages = aiMessages, configured = aiConfigured, activeFileName = tabs.firstOrNull { it.id == activeId }?.title,
+                loading = aiLoading, error = aiError, onConfigure = onAiConfigure, onNewChat = { aiMessages.clear() }, onSend = onAiSend, onApplyLatest = onAiApply,
+                modifier = Modifier.weight(1f),
+            )
+            else -> SidebarToolPage(
+                activity, workspace, onOpenFolder, onOpenFile, onAiConfigure,
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+            )
+        }
+    }
 }
 
 @Composable private fun SidePanel(activity: IdeActivity, workspace: String?, items: List<WorkspaceItem<DocumentFile>>, tabs: List<EditorTab>, activeId: String?, query: String, onQuery: (String) -> Unit, onOpenFolder: () -> Unit, onOpenFile: () -> Unit, onCreateFile: () -> Unit, onCreateFolder: () -> Unit, onFile: (WorkspaceItem<DocumentFile>) -> Unit, onTab: (EditorTab) -> Unit, modifier: Modifier = Modifier) {
@@ -293,8 +460,8 @@ private fun activityIcon(item: IdeActivity) = when (item) {
     }
 }
 
-@Composable private fun EditorArea(active: EditorTab?, tabs: List<EditorTab>, activeId: String?, split: Boolean, workspace: String?, recents: List<RecentProject>, onSelect: (EditorTab) -> Unit, onClose: (EditorTab) -> Unit, onValue: (EditorTab) -> Unit, onWorkspace: () -> Unit, onInsert: (String) -> Unit, onWelcome: () -> Unit, onNew: () -> Unit, onOpen: () -> Unit, onFolder: () -> Unit, onRecent: (RecentProject) -> Unit, onDocs: () -> Unit) {
-    Column(Modifier.fillMaxSize().background(ReversoColors.Background)) {
+@Composable private fun EditorArea(active: EditorTab?, tabs: List<EditorTab>, activeId: String?, split: Boolean, workspace: String?, recents: List<RecentProject>, onSelect: (EditorTab) -> Unit, onClose: (EditorTab) -> Unit, onValue: (EditorTab) -> Unit, onWorkspace: () -> Unit, onInsert: (String) -> Unit, onWelcome: () -> Unit, onNew: () -> Unit, onOpen: () -> Unit, onFolder: () -> Unit, onRecent: (RecentProject) -> Unit, onDocs: () -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier.fillMaxSize().background(ReversoColors.Background)) {
         if (tabs.isNotEmpty()) EditorTabs(tabs, activeId, onSelect, onClose)
         if (active == null) WelcomeScreen(recents, onNew, onOpen, onFolder, onRecent, onDocs)
         else {
@@ -331,19 +498,23 @@ private fun activityIcon(item: IdeActivity) = when (item) {
     }
 }
 
-@Composable private fun SearchPage(query: String, onQuery: (String) -> Unit, tabs: List<EditorTab>, onSelect: (EditorTab) -> Unit) {
-    Column(Modifier.fillMaxSize().padding(16.dp)) { Text("Search in open editors", style = MaterialTheme.typography.titleLarge); Spacer(Modifier.height(12.dp)); OutlinedTextField(query, onQuery, Modifier.fillMaxWidth(), singleLine = true, placeholder = { Text("Search text") }); LazyColumn { items(tabs) { tab -> if (query.isNotBlank()) { val lines = tab.value.text.lines().mapIndexedNotNull { i, line -> if (line.contains(query, ignoreCase = true)) (i + 1) to line.trim() else null }; lines.forEach { (lineNo, line) -> TextButton(onClick = { onSelect(tab) }, modifier = Modifier.fillMaxWidth()) { Column(Modifier.fillMaxWidth()) { Text("${tab.title}:$lineNo", color = ReversoColors.Blue); Text(line, color = ReversoColors.Ink, maxLines = 1) } } } } } } }
-}
-
-@Composable private fun ActivityPage(activity: IdeActivity, workspace: String?, recents: List<RecentProject>, onOpenFolder: () -> Unit, onOpenDocument: () -> Unit, onRecent: (RecentProject) -> Unit) {
-    Column(Modifier.fillMaxSize().padding(22.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(activity.label, style = MaterialTheme.typography.headlineSmall)
+@Composable private fun SidebarToolPage(activity: IdeActivity, workspace: String?, onOpenFolder: () -> Unit, onOpenDocument: () -> Unit, onAiSettings: () -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(activity.label, style = MaterialTheme.typography.titleLarge)
         when (activity) {
-            IdeActivity.SOURCE_CONTROL -> UnavailableCard("Source control", "Git operations are not connected yet. No repository changes are being simulated.")
-            IdeActivity.RUN_DEBUG -> UnavailableCard("Run and Debug", "No run configuration or debugger is connected yet.")
-            IdeActivity.EXTENSIONS -> { Text("Reverso Hub", style = MaterialTheme.typography.titleMedium); OutlinedTextField("", {}, Modifier.fillMaxWidth(), enabled = false, placeholder = { Text("Extension search · Hub not connected") }); UnavailableCard("Marketplace unavailable", "Extension discovery and installation will be enabled when Reverso Hub is implemented. The app does not install placeholder extensions.") }
-            IdeActivity.SETTINGS -> { Text("Editor settings", style = MaterialTheme.typography.titleMedium); Text("Theme: Reverso Dark", color = ReversoColors.Muted); Text("Editor engine: Android text input (Rust engine integration pending)", color = ReversoColors.Muted); Text("Workspace: ${workspace ?: "None open"}", color = ReversoColors.Muted) }
-            else -> { Text("Workspace: ${workspace ?: "No folder open"}", color = ReversoColors.Muted); OutlinedButton(onClick = onOpenFolder) { Text("Open Folder") }; OutlinedButton(onClick = onOpenDocument) { Text("Open File") }; recents.forEach { TextButton(onClick = { onRecent(it) }) { Text(it.name) } }
+            IdeActivity.SOURCE_CONTROL -> UnavailableCard("Git not connected", "No repository detected. Git status, staging, commits, and remotes are not implemented yet.")
+            IdeActivity.RUN_DEBUG -> UnavailableCard("Debugger not connected", "Run configurations and a debugger are not available in this build.")
+            IdeActivity.EXTENSIONS -> UnavailableCard("Reverso Hub not connected", "Extension discovery and installation are unavailable until the Hub service and safe extension runtime are implemented.")
+            IdeActivity.SETTINGS -> {
+                Text("Workspace: ${workspace ?: "None open"}", color = ReversoColors.Muted)
+                Text("Editor engine: Android Compose text input. Rust/JNI connection is pending.", color = ReversoColors.Muted)
+                Button(onClick = onAiSettings, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Filled.AutoAwesome, null); Text("  Configure AI provider") }
+                Text("AI keys are stored encrypted in Android Keystore. Requests are sent directly to the configured HTTPS provider.", color = ReversoColors.Muted, style = MaterialTheme.typography.bodySmall)
+            }
+            else -> {
+                Text("Workspace: ${workspace ?: "No folder open"}", color = ReversoColors.Muted)
+                OutlinedButton(onClick = onOpenFolder, modifier = Modifier.fillMaxWidth()) { Text("Open Folder") }
+                OutlinedButton(onClick = onOpenDocument, modifier = Modifier.fillMaxWidth()) { Text("Open File") }
             }
         }
     }
@@ -353,25 +524,27 @@ private fun activityIcon(item: IdeActivity) = when (item) {
 
 @Composable private fun BottomPanel(tool: BottomTool, output: List<String>, modifier: Modifier, onTool: (BottomTool) -> Unit, onClose: () -> Unit, onDrag: (Float) -> Unit) {
     Column(modifier.fillMaxWidth().background(ReversoColors.Surface)) {
-        Box(Modifier.fillMaxWidth().height(6.dp).pointerInput(Unit) { detectVerticalDragGestures { _, drag -> onDrag(drag) } }.background(ReversoColors.Border))
+        Box(Modifier.fillMaxWidth().height(18.dp).pointerInput(Unit) { detectVerticalDragGestures { _, drag -> onDrag(drag) } }, contentAlignment = Alignment.Center) {
+            Box(Modifier.width(42.dp).height(3.dp).background(ReversoColors.Muted, RoundedCornerShape(2.dp)))
+        }
         Row(Modifier.fillMaxWidth().height(44.dp).horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) { BottomTool.entries.forEach { TextButton(onClick = { onTool(it) }) { Text(it.label, color = if (tool == it) ReversoColors.Blue else ReversoColors.Muted) } }; Spacer(Modifier.weight(1f)); IconButton(onClick = onClose) { Icon(Icons.Filled.Close, "Close panel") } }
         when (tool) {
             BottomTool.OUTPUT -> LazyColumn(Modifier.weight(1f, fill = false).padding(horizontal = 12.dp)) { items(output) { Text(it, color = ReversoColors.Muted, style = MaterialTheme.typography.bodySmall) } }
             BottomTool.PROBLEMS -> Text("No language server is connected. Diagnostics are unavailable.", Modifier.padding(12.dp), color = ReversoColors.Muted)
             BottomTool.TERMINAL -> UnavailableCard("Termux terminal bridge unavailable", "REVERSO does not execute commands itself. Install/configure a supported authenticated Termux companion bridge when available. No terminal session is being faked.")
             BottomTool.DEBUG_CONSOLE -> Text("No debugger is connected.", Modifier.padding(12.dp), color = ReversoColors.Muted)
-            BottomTool.GIT -> Text("Git integration is not implemented yet.", Modifier.padding(12.dp), color = ReversoColors.Muted)
+            BottomTool.PORTS -> Text("Port forwarding is not connected. No local or remote ports are being reported.", Modifier.padding(12.dp), color = ReversoColors.Muted)
         }
     }
 }
 
-@Composable private fun StatusBar(tab: EditorTab, message: String, onPanel: (BottomTool) -> Unit) {
+@Composable private fun StatusBar(tab: EditorTab, message: String) {
     val cursor = tab.value.selection.end.coerceIn(0, tab.value.text.length)
     val before = tab.value.text.take(cursor)
     val line = before.count { it == '\n' } + 1
     val column = before.length - (before.lastIndexOf('\n') + 1) + 1
     Row(Modifier.fillMaxWidth().height(28.dp).background(ReversoColors.Blue).padding(horizontal = 9.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text("⎇ No repository", Modifier.clickable { onPanel(BottomTool.GIT) }, color = ReversoColors.Background, style = MaterialTheme.typography.labelSmall)
+        Text("⎇ No repository", color = ReversoColors.Background, style = MaterialTheme.typography.labelSmall)
         Spacer(Modifier.weight(1f)); Text("${languageForFile(tab.title)} · UTF-8 · Spaces: 4 · Ln $line, Col $column", color = ReversoColors.Background, style = MaterialTheme.typography.labelSmall, maxLines = 1); Spacer(Modifier.width(8.dp)); Text(message, color = ReversoColors.Background, style = MaterialTheme.typography.labelSmall, maxLines = 1)
     }
 }

@@ -8,14 +8,24 @@
 4. The syntax transformation colors text without changing character offsets. The toolbar inserts punctuation at the current selection.
 5. Save writes UTF-8 to the selected URI. An unsaved tab invokes Android's Create Document picker. IO failures appear in the status bar.
 
-## Open a workspace
+## Workspace and responsive navigation
 
-1. Open Folder launches Android's document-tree picker.
-2. Reverso persists read/write tree permissions where available and wraps the selected URI in `DocumentFile`.
-3. It saves the folder's URI and display name in app-private preferences, bounded to eight recent entries.
-4. The Explorer lists immediate children. Selecting a directory toggles expansion; enumeration is limited to expanded folders and depth five. Selecting a file reads it into an editor tab.
-5. New file/folder actions call `DocumentFile.createFile` / `createDirectory` under the granted root.
+The header sidebar icon toggles a left activity rail and page. On wide layouts it occupies a sidebar column while the editor remains visible and changes width; on phones the sidebar is a full-width destination so the editor retains a usable width. The Explorer lists files in an explicitly granted SAF tree. Directory taps toggle expansion; traversal is limited to expanded folders and depth five. New file/folder actions call `DocumentFile.createFile` / `createDirectory`. Search examines currently open editors.
 
-## Search and tools
+The bottom panel is initially closed. The header terminal icon toggles it; selecting a tab changes its contents. It animates open/closed and has a touch drag handle to resize its height. Output lists actual Reverso events. Terminal, Problems, Debug Console, and Ports report their current unavailable backend rather than fabricating sessions or data.
 
-Search examines only currently open editor text. Find/replace changes the active buffer and marks it dirty. Output shows actual app events. Terminal, Git, debugger, diagnostics, and extension panels explain that their backends are not connected, rather than fabricating results.
+## AI provider and chat flow
+
+1. In Settings or AI Chat, the user chooses OpenAI, Anthropic, OpenRouter, or OpenAI-compatible, enters an HTTPS endpoint/model as needed, and supplies a key.
+2. The key is encrypted using AES-GCM. Its AES key is created and retained by Android Keystore; ciphertext and a fresh IV are stored in private preferences. Each provider has a separate key alias and ciphertext entry. Reverso never displays the saved secret.
+3. The user enters a prompt. The “Include active file” switch is off by default. When enabled, the current file text (up to 12,000 characters) is explicitly attached to that message. Conversations remain in memory only and “New chat” clears them.
+4. `AiChatClient` sends a bounded, non-streaming JSON request over HTTPS directly from the device to the selected provider using that provider's authentication and wire format. No AI request is made until the user taps Send.
+5. The response is shown in chat. “Apply response to editor” opens a confirmation; confirming replaces the current editor buffer and marks it dirty. The user must save to persist it.
+
+Requests use connection/read timeouts and response-size limits. Provider HTTP failures show status codes without echoing server response bodies, which might contain sensitive data. Reverso does not proxy requests or log prompts, source content, or credentials. Provider billing, privacy and retention policies remain applicable.
+
+## Existing release and Rust flows
+
+The startup version checker runs on an IO dispatcher, validates a newer semantic version and opens a verified GitHub release page only after user action. It does not download or install the APK.
+
+The Rust crates implement UTF-8-safe editing separately. Android does not call the Rust engine through JNI yet.

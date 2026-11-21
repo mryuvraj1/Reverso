@@ -2,8 +2,9 @@
 
 ## Unreleased
 
-- Replaced the starter editor screen with a Reverso-branded, responsive mobile IDE shell.
-- Added an original adaptive launcher icon, activity navigation, recent workspace explorer, folder expansion and file/folder creation.
-- Added editor tabs, breadcrumbs, line numbers, lightweight syntax coloring, touch keyboard toolbar, wide-screen split editor, status bar, and resizable bottom tools.
-- Added clear unavailable states for Termux, Git, debugging, language-server diagnostics, and extensions until real backends exist.
-- Added editor-model and semantic-version tests and expanded implementation documentation.
+- Added a toggleable animated sidebar that leaves the editor visible and resizes it on wide screens; phones use a focused full-width sidebar destination.
+- Added an animated open/close, touch-resizable bottom panel with Terminal, Output, Problems, Debug Console and Ports destinations.
+- Added real opt-in AI chat for OpenAI Chat Completions, Anthropic Messages, OpenRouter and custom OpenAI-compatible HTTPS endpoints.
+- Added provider-specific endpoint/model preferences and AES-GCM encrypted API keys backed by Android Keystore; code context is opt-in and capped.
+- Added in-memory New Chat and an explicit confirmation before an AI response replaces the active file buffer.
+- Added AI endpoint/config/context tests and updated engineering/security documentation.

@@ -7,8 +7,9 @@ Reverso is an open-source, Android-first mobile development environment. This re
 ## Current implementation
 
 - Rust workspace: UTF-8 safe text edits, cursor and selection state, undo/redo, line/column lookup, search, and replace.
-- Android app: responsive Reverso-branded dark IDE, workspace tree and recents, SAF file/folder create/open/save, editor tabs, syntax color, search and replace, line numbers, wide-screen split view, touch keyboard toolbar, status and bottom panels, and Ctrl+S/Ctrl+F support.
-- Git, integrated terminal execution, debugger, extension installation, LSP diagnostics and Rust/JNI are shown as unavailable until their real backends are implemented.
+- Android app: responsive Reverso-branded dark IDE, workspace tree and recents, SAF file/folder create/open/save, editor tabs, syntax color, search and replace, line numbers, wide-screen split view, a collapsible responsive sidebar, animated/resizable bottom panel, touch keyboard toolbar, status display, and Ctrl+S/Ctrl+F support.
+- AI chat connects directly to OpenAI Chat Completions, Anthropic Messages, OpenRouter, or an OpenAI-compatible HTTPS endpoint. API keys are encrypted with Android Keystore, source context is opt-in, and applying a response requires confirmation.
+- The bottom panel includes Terminal, Output, Problems, Debug Console, and Ports. Terminal execution, Git, debugging, extension installation, LSP diagnostics and Rust/JNI are shown as unavailable until their real backends are implemented.
 - On startup, the app checks published GitHub Releases and shows an in-app notice when a newer stable release is available. The notice links to the release page; it does not download or install an update.
 - Rust/JNI loading, Termux bridge, cloud and Git execution are not implemented yet. Syntax coloring and project tree browsing are currently Android-side features.
 

@@ -4,7 +4,7 @@
 
 `crates/text-buffer` owns UTF-8 text storage and checked byte-range edits. `crates/editor-engine` composes the buffer with cursor, selection, history, line/column, and search behavior. `app` is the Android shell; Compose currently stores `TextFieldValue` per editor tab and renders lightweight regex syntax color. `WorkspaceRepository` accesses only user-granted SAF tree URIs and stores recent folder references in app preferences. This keeps platform storage and presentation concerns out of Rust, but Android does not yet call the Rust engine.
 
-`MainActivity` owns UI navigation and coordinates SAF open/create/save callbacks. `ui` holds reusable theme, logo, tabs, editor surface, and toolbar composables. `EditorModels` contains immutable tab data and selection insertion helpers. The terminal UI is separate from command execution; no Termux bridge exists. Git, debugger, language server, and extension services are likewise disconnected and are reported as unavailable.
+`MainActivity` owns UI navigation and coordinates SAF open/create/save callbacks. `ui` holds reusable theme, logo, tabs, editor surface, and toolbar composables. `EditorModels` contains immutable tab data and selection insertion helpers. The terminal UI is separate from command execution; no Termux bridge exists. Git, debugger, language server, extension and port-forwarding services are likewise disconnected and are reported as unavailable. The AI adapter is a direct Android-to-provider client rather than a Reverso service; provider credentials are encrypted with Android Keystore and are scoped by provider.
 
 ## Intended direction
 

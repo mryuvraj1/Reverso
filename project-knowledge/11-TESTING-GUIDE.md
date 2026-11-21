@@ -2,20 +2,16 @@
 
 ## Kotlin unit tests
 
-Run `./gradlew :app:testDebugUnitTest`. `EditorModelsTest` checks workspace sort order, extension-to-language labels, and insertion/replacement at a text selection without needing Android framework objects. `VersioningTest` checks semantic version ordering, prerelease precedence, and invalid input.
+Run `./gradlew :app:testDebugUnitTest`. `EditorModelsTest` checks workspace sorting, language labels, and cursor-aware insertion. `AiProviderConfigTest` checks provider defaults/protocol mapping, HTTPS and endpoint-secret validation, required model handling, and opt-in code-context serialization. `VersioningTest` checks semantic version ordering, prerelease precedence, and malformed input. Keystore operations and live provider requests require an Android runtime and user credentials; they are not faked in local unit tests.
 
-## Android build
+## Android build and manual checks
 
-Run `./gradlew :app:assembleDebug` with Android SDK platform 35 installed. The Android source uses platform SAF launchers, so interactive storage behavior still needs device/emulator verification: open a text file, create/open a workspace, expand a folder, create a file, edit, save, and relaunch to verify a persisted recent folder. Rotate between portrait and landscape and use a hardware keyboard for Ctrl+S/Ctrl+F.
+Run `./gradlew :app:assembleDebug lint` with Android SDK platform 35. On a device, verify open/save, workspace create/expand, rotation, external keyboard shortcuts, and the sidebar and bottom panel toggles/resizing. For AI, configure a test provider/key, send a simple prompt without context, then send one with the context toggle. Confirm that provider errors are shown without exposing the key, New Chat clears the in-memory conversation, and Apply requires confirmation and marks the file dirty. Do not use a production key for test prompts unless the user accepts provider billing and data policies.
 
 ## Rust
 
-Run `cargo fmt --check`, `cargo test --workspace`, and `cargo clippy --workspace --all-targets`. The Rust library tests do not establish JNI integration; no JNI layer is currently wired into Android.
+Run `cargo fmt --check`, `cargo test --workspace`, and `cargo clippy --workspace --all-targets`. The Rust library tests do not establish JNI integration; no JNI layer is wired into Android.
 
-## Latest verification
+## Verified boundaries
 
-Commit `766f460` passed GitHub Actions run `44900754961`: Rust formatting/tests/Clippy, Android `testDebugUnitTest`, `assembleDebug`, and `lint` all succeeded. The debug APK was uploaded as the `reverso-android-debug-apk` artifact.
-
-## Honest limitations
-
-The terminal panel is explanatory UI until an authenticated Termux bridge is implemented. Git, debugger, extension marketplace, LSP, and Rust/JNI integrations are also unavailable and must not be tested as if operational. Android instrumentation/device tests are not yet present.
+CI verifies compilation, Kotlin unit tests, Rust tests/lints, APK assembly, and Android lint. It cannot verify provider credentials, paid API behavior, Keystore hardware behavior, Android SAF providers, or touch gestures without a configured device/runtime. Terminal execution, Git, debugging, extension loading, language-server diagnostics, and port forwarding remain unavailable and must not be tested as operational.

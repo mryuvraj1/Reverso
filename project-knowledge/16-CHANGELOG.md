@@ -1,9 +1,9 @@
 # Project knowledge changelog
 
+## 2026-11-21 — Toggleable IDE panels and AI provider client
+
+Documented the responsive hide/show sidebar and editor space recovery, animated draggable bottom panel and Ports destination. Added provider-specific AI setup/API, encrypted per-provider Android Keystore keys, opt-in file context, bounded direct HTTPS requests, in-memory chats, and explicit whole-buffer apply confirmation. Documented that provider credentials and Android device runtime are required for live API/Keystore verification.
+
 ## 2026-11-21 — Professional mobile IDE shell
 
-Documented the Reverso branded dark theme and adaptive icon, responsive activity navigation, workspace tree and recent-folder persistence, tabs and syntax-colored editor surface, SAF file creation/open/save, search, split view on wide layouts, touch keyboard toolbar, status bar, and bottom tool panel. Documented unavailable terminal/Git/debug/Hub/LSP/Rust integrations explicitly so UI claims match implementation. Added model and version comparison unit test descriptions. The updated Android unit tests, debug build, and lint passed CI run `44900754961`. See root `CHANGELOG.md` for the user-facing summary.
-
-## Initial implementation and follow-up
-
-Documented the UTF-8 editing primitives, Android document editor, release notice behavior, build setup, and planned phases.
+Documented Reverso branding, responsive navigation, workspace tree, file editing, syntax-colored editor surface and unavailable backend states.

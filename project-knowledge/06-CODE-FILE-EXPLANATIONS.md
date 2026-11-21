@@ -4,13 +4,13 @@
 
 ### `app/src/main/java/dev/reverso/MainActivity.kt`
 
-Defines the launcher `MainActivity` and Compose `ReversoApp`. The app state contains open `EditorTab`s, the active tab, selected IDE activity, optional workspace, recent projects, status/output messages, panel state, and dialogs. The activity invokes Android `OpenDocument`, `OpenDocumentTree`, and `CreateDocument` contracts. `openUri`/`saveTab` use `ContentResolver` streams and report IO failures in status text. Workspace tree reads use `DocumentFile` only for a folder explicitly selected by the user. The responsive shell switches between a persistent rail/sidebar/editor on wide screens and activity destinations on phones.
+Defines the launcher `MainActivity` and Compose `ReversoApp`. It coordinates open editor tabs, the active tab, selected sidebar activity, optional SAF workspace, bottom panel state, application output events, and in-memory AI conversation. Android `OpenDocument`, `OpenDocumentTree`, and `CreateDocument` contracts provide file access. `openUri`/`saveTab` use `ContentResolver` streams and surface IO errors in the status bar. Workspace tree reads use `DocumentFile` only for a user-selected folder.
 
-`Header` exposes home, open, save, find, split, and terminal actions. `ActivityRail` and `MobileActivityBar` select Explorer, Search, Source Control, Run/Debug, Extensions, and Settings. `SidePanel` displays open editors and a workspace tree, including directory expansion and create-file/create-folder controls. `EditorArea` joins tabs, breadcrumbs, the input surface, and keyboard toolbar. `WelcomeScreen` offers local file/folder actions and recent folders. `ActivityPage` explicitly reports unimplemented Git, debugging, and Hub integrations. `BottomPanel` exposes Terminal, Problems, Output, Debug Console, and Git; only Output currently contains real application events.
+The responsive layout defaults to a hidden sidebar on phones and a visible sidebar on wide screens. The header icon toggles it; activity destinations remain beside the editor on wide layouts. The bottom panel is initially closed, toggles from the terminal header icon, and changes the editor's height. The draggable handle changes the panel height within device bounds. `IdeSidebar` routes Explorer/Search to `SidePanel`, AI to `AiChatScreen`, and other activity destinations to clearly labeled tool pages. `EditorArea` keeps the selected editor/welcome view central.
 
-Editor writes set the dirty flag. Ctrl+S saves an existing URI or opens Save As; Ctrl+F opens find/replace. `StatusBar` derives language, UTF-8, indentation display, and line/column from the active text. SAF grants are persisted when supported. The app intentionally has no broad storage permission. The release popup remains connected to `ReleaseChecker` and opens a verified GitHub release URL; APK installation is not attempted.
+SAF actions create/open/save real user-selected files and folders. Ctrl+S and Ctrl+F are supported. AI provider configuration is shown in `AiProviderSettingsScreen`; send requests run on `Dispatchers.IO` through `AiChatClient`. The user must opt in to attach the active file (limited to 12,000 characters). AI replies are memory-only and replacing an editor buffer requires a confirmation dialog; replacement marks the tab dirty. No prompt, key, or source content is written to the application output log. The release popup remains connected to `ReleaseChecker`; it only opens the release page.
 
-No native Rust/JNI, PTY bridge, Git engine, LSP, extension installer, or debugger is connected. The current editor input and syntax treatment are Android Compose implementations. Test changes by running `./gradlew :app:testDebugUnitTest :app:assembleDebug` with Android SDK platform 35.
+The app still does not connect the editor to Rust/JNI, Termux, Git, a debugger, a language server, an extension runtime, or port forwarding.
 
 ### `app/src/main/java/dev/reverso/EditorModels.kt`
 
@@ -23,6 +23,14 @@ Defines `IdeActivity`, `BottomTool`, `EditorTab`, `WorkspaceItem`, `ProjectWorks
 ### `app/src/main/java/dev/reverso/Versioning.kt` and `ReleaseChecker.kt`
 
 `Versioning.kt` parses and compares semantic versions including prerelease identifiers. `ReleaseChecker` fetches GitHub's latest release with timeouts and a 1 MB body cap, accepts only an HTTPS `github.com` URL, and returns a release only when it is newer than the installed `versionName`. Network/JSON failures are handled by the UI as no notice. It does not download or install APK files.
+
+### `app/src/main/java/dev/reverso/AiProvider.kt`
+
+Defines provider metadata and validation, per-provider configuration persistence, Android Keystore credential storage, and the HTTP client. OpenAI, OpenRouter, and custom OpenAI-compatible providers use the chat-completions wire shape; Anthropic uses its Messages shape and headers. `AiProviderConfig.validationError` requires an HTTPS endpoint without user info, query or fragment and requires a model ID. `AiConfigRepository` stores endpoint/model per provider, while `SecureCredentialStore` encrypts each key with AES-GCM and a separate non-exportable Android Keystore AES key. There is no plaintext fallback. `AiChatClient.complete` posts only after the user sends, uses timeouts, disables redirects, caps response/history size, and avoids logging body or credentials. It returns provider text or a generic bounded failure. Tests cover endpoint validation and request-context opt-in; actual credentials/provider behavior needs device verification.
+
+### `app/src/main/java/dev/reverso/ui/AiScreens.kt`
+
+`AiProviderSettingsScreen` edits provider-specific endpoint/model and a masked API key. It queries whether that provider already has an encrypted key so a blank key field can retain the saved one. `AiChatScreen` renders in-memory conversation, exposes Configure/New Chat, an opt-in active-file switch, a prompt field and Send action, and an explicit Apply response action. New Chat clears the conversation. The Apply callback is handled by `MainActivity` with a whole-buffer replacement confirmation. The screen never reads or displays the saved key.
 
 ### `app/src/main/java/dev/reverso/ui/ReversoTheme.kt`
 

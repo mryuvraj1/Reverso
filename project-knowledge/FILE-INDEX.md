@@ -19,21 +19,24 @@ Inventory generated from the actual repository tree. Build outputs and dependenc
 | `SECURITY.md` | Project guidance | Project entry point, policy or history | Workspace |
 | `app/build.gradle.kts` | Build/configuration | Build setup, dependency lock or repository settings | Workspace |
 | `app/src/main/AndroidManifest.xml` | Project file | Project configuration or resource | Workspace |
+| `app/src/main/java/dev/reverso/AiProvider.kt` | Android Kotlin source | Provider API client and encrypted credential/config storage | Android AI |
 | `app/src/main/java/dev/reverso/EditorModels.kt` | Android Kotlin source | Editor, navigation and workspace models | Android app |
-| `app/src/main/java/dev/reverso/MainActivity.kt` | Android Kotlin source | Responsive IDE shell, navigation and SAF workflows | Android app |
-| `app/src/main/java/dev/reverso/ReleaseChecker.kt` | Android Kotlin source | Release notification/version comparison | Android app |
-| `app/src/main/java/dev/reverso/Versioning.kt` | Android Kotlin source | Release notification/version comparison | Android app |
+| `app/src/main/java/dev/reverso/MainActivity.kt` | Android Kotlin source | Responsive IDE layout, SAF flows and feature routing | Android app |
+| `app/src/main/java/dev/reverso/ReleaseChecker.kt` | Android Kotlin source | Release notification and semantic version comparison | Android app |
+| `app/src/main/java/dev/reverso/Versioning.kt` | Android Kotlin source | Release notification and semantic version comparison | Android app |
 | `app/src/main/java/dev/reverso/WorkspaceRepository.kt` | Android Kotlin source | Recent projects and SAF workspace enumeration | Android app |
-| `app/src/main/java/dev/reverso/ui/Brand.kt` | Compose UI component | Reusable Reverso mark composable | Android presentation |
-| `app/src/main/java/dev/reverso/ui/EditorSurface.kt` | Compose UI component | Editor tabs, breadcrumbs, text surface and keyboard toolbar | Android presentation |
-| `app/src/main/java/dev/reverso/ui/ReversoTheme.kt` | Compose UI component | Dark theme palette and Material 3 theme | Android presentation |
-| `app/src/main/java/dev/reverso/ui/SyntaxHighlight.kt` | Compose UI component | Lightweight syntax color transformation | Android presentation |
-| `app/src/main/res/drawable/reverso_mark.xml` | Android resource | App identity, theme or icon resource | Android app |
-| `app/src/main/res/mipmap-anydpi-v26/ic_reverso.xml` | Android resource | App identity, theme or icon resource | Android app |
-| `app/src/main/res/values/colors.xml` | Android resource | App identity, theme or icon resource | Android app |
-| `app/src/main/res/values/styles.xml` | Android resource | App identity, theme or icon resource | Android app |
-| `app/src/test/java/dev/reverso/EditorModelsTest.kt` | Kotlin unit test | Regression coverage for editor/version models | Android app |
-| `app/src/test/java/dev/reverso/VersioningTest.kt` | Kotlin unit test | Regression coverage for editor/version models | Android app |
+| `app/src/main/java/dev/reverso/ui/AiScreens.kt` | Compose UI component | AI provider settings and chat interface | Android AI/UI |
+| `app/src/main/java/dev/reverso/ui/Brand.kt` | Compose UI component | Reverso mark composable | Android branding |
+| `app/src/main/java/dev/reverso/ui/EditorSurface.kt` | Compose UI component | Editor tabs, breadcrumbs, text surface and keyboard toolbar | Android editor UI |
+| `app/src/main/java/dev/reverso/ui/ReversoTheme.kt` | Compose UI component | Dark palette and Material 3 theme | Android design system |
+| `app/src/main/java/dev/reverso/ui/SyntaxHighlight.kt` | Compose UI component | Lightweight syntax color transformation | Android editor UI |
+| `app/src/main/res/drawable/reverso_mark.xml` | Android resource | Brand, app icon or UI theme resource | Android app |
+| `app/src/main/res/mipmap-anydpi-v26/ic_reverso.xml` | Android resource | Brand, app icon or UI theme resource | Android app |
+| `app/src/main/res/values/colors.xml` | Android resource | Brand, app icon or UI theme resource | Android app |
+| `app/src/main/res/values/styles.xml` | Android resource | Brand, app icon or UI theme resource | Android app |
+| `app/src/test/java/dev/reverso/AiProviderConfigTest.kt` | Kotlin unit test | Regression coverage for editor, AI config or versions | Android app tests |
+| `app/src/test/java/dev/reverso/EditorModelsTest.kt` | Kotlin unit test | Regression coverage for editor, AI config or versions | Android app tests |
+| `app/src/test/java/dev/reverso/VersioningTest.kt` | Kotlin unit test | Regression coverage for editor, AI config or versions | Android app tests |
 | `build.gradle.kts` | Build/configuration | Build setup, dependency lock or repository settings | Workspace |
 | `crates/editor-engine/Cargo.toml` | Cargo manifest | Rust crate metadata and dependencies | Rust workspace |
 | `crates/editor-engine/src/lib.rs` | Rust source | UTF-8 editing engine implementation | Rust workspace |
