@@ -9,7 +9,7 @@
 - [x] Encrypt API keys with provider-specific Android Keystore AES-GCM keys; keep keys out of logs and opt file context in per prompt.
 - [x] Require confirmation before replacing the active editor buffer with an AI response.
 - [x] Add unit tests for provider config/endpoint security and AI context opt-in.
-- [ ] Run Android CI for this revision; device verification with real provider credentials remains required.
+- [x] Run Android and Rust CI for this revision (GitHub Actions run 44903602597); device verification with real provider credentials remains required.
 - [ ] Connect Android editor to Rust through JNI and establish offset conversion tests.
 - [ ] Add Android instrumentation/device tests for SAF, sidebar/panel gestures, orientation, keyboard, and Keystore.
 - [ ] Implement supported authenticated Termux interactive session integration and Git in Phase 2.

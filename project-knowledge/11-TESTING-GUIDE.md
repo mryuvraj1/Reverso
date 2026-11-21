@@ -14,4 +14,6 @@ Run `cargo fmt --check`, `cargo test --workspace`, and `cargo clippy --workspace
 
 ## Verified boundaries
 
-CI verifies compilation, Kotlin unit tests, Rust tests/lints, APK assembly, and Android lint. It cannot verify provider credentials, paid API behavior, Keystore hardware behavior, Android SAF providers, or touch gestures without a configured device/runtime. Terminal execution, Git, debugging, extension loading, language-server diagnostics, and port forwarding remain unavailable and must not be tested as operational.
+CI run [44903602597](https://github.com/mryuvraj1/Reverso/actions/runs/44903602597) passed on 2026-11-21. It ran `./gradlew testDebugUnitTest assembleDebug lint`, compiled the Android app, passed all 10 Kotlin unit tests, assembled the debug APK, and completed Android lint. Rust CI passed `cargo fmt --check`, `cargo test --workspace` (6 unit tests), and `cargo clippy --workspace --all-targets -- -D warnings`. `git diff --check` also passed locally. The local Termux environment has no Android SDK, so Android verification used GitHub Actions.
+
+CI cannot verify provider credentials, paid API behavior, Keystore hardware behavior, Android SAF providers, or touch gestures without a configured device/runtime. Terminal execution, Git, debugging, extension loading, language-server diagnostics, and port forwarding remain unavailable and must not be tested as operational.
