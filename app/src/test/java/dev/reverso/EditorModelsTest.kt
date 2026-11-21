@@ -1,7 +1,7 @@
 package dev.reverso
 
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.input.TextRange
+import androidx.compose.ui.text.TextRange
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

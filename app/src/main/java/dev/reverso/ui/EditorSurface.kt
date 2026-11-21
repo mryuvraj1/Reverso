@@ -31,7 +31,7 @@ import dev.reverso.EditorTab
 import dev.reverso.languageForFile
 
 @Composable
-fun EditorTabs(
+internal fun EditorTabs(
     tabs: List<EditorTab>,
     activeId: String?,
     onSelect: (EditorTab) -> Unit,
@@ -79,7 +79,7 @@ fun Breadcrumbs(workspaceName: String?, path: List<String>, onWorkspaceClick: ()
 }
 
 @Composable
-fun EditorSurface(
+internal fun EditorSurface(
     tab: EditorTab,
     onValueChange: (EditorTab) -> Unit,
     fontSize: Int,

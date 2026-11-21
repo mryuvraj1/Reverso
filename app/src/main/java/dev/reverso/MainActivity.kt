@@ -184,6 +184,8 @@ private fun ReversoApp() {
         else false
     }) {
         val wide = maxWidth >= 720.dp
+        val availableScreenMaxHeight = maxHeight
+        val availableScreenHeight = availableScreenMaxHeight.value
         Column(Modifier.fillMaxSize()) {
             Header(active?.title, onHome = { activity = IdeActivity.EXPLORER; activeId = null }, onOpen = { openDocument.launch(arrayOf("text/*", "application/json", "application/xml", "application/octet-stream")) }, onSave = { active?.let { if (it.uri == null) saveDocument.launch(it.title) else saveTab(it) } }, onFind = { findDialog = true }, onSplit = { if (wide && tabs.size > 1) splitMode = !splitMode else status = "Split view needs a second open file and a wide screen" }, onTerminal = { bottomTool = BottomTool.TERMINAL; bottomOpen = !bottomOpen })
             if (wide) {
@@ -213,7 +215,7 @@ private fun ReversoApp() {
                         IdeActivity.SEARCH -> SearchPage(query, { query = it }, tabs, onSelect = { activeId = it.id; activity = IdeActivity.EXPLORER })
                         else -> ActivityPage(activity, workspace?.name, recents, onOpenFolder = { openFolder.launch(null) }, onOpenDocument = { openDocument.launch(arrayOf("text/*", "application/json", "application/xml")) }, onRecent = { RecentProjects.open(context, it)?.let { ws -> workspace = ws; activity = IdeActivity.EXPLORER } })
                     }
-                    if (bottomOpen && active != null && activity == IdeActivity.EXPLORER) Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) { BottomPanel(bottomTool, output, Modifier.height(bottomHeight.dp.coerceAtMost(maxHeight * 0.58f)), onTool = { bottomTool = it }, onClose = { bottomOpen = false }, onDrag = { delta -> bottomHeight = (bottomHeight - delta).coerceIn(110f, maxHeight.value * .7f) }) }
+                    if (bottomOpen && active != null && activity == IdeActivity.EXPLORER) Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) { BottomPanel(bottomTool, output, Modifier.height(bottomHeight.dp.coerceAtMost(availableScreenMaxHeight * 0.58f)), onTool = { bottomTool = it }, onClose = { bottomOpen = false }, onDrag = { delta -> bottomHeight = (bottomHeight - delta).coerceIn(110f, availableScreenHeight * .7f) }) }
                 }
             }
             if (active != null) StatusBar(active, status, onPanel = { bottomTool = it; bottomOpen = true })

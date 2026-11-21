@@ -2,7 +2,7 @@ package dev.reverso
 
 import android.net.Uri
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.input.TextRange
+import androidx.compose.ui.text.TextRange
 import androidx.documentfile.provider.DocumentFile
 
 internal enum class IdeActivity(val label: String) {
