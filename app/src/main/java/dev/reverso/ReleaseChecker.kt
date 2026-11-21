@@ -39,56 +39,19 @@ object ReleaseChecker {
             val json = JSONObject(bytes.toString(Charsets.UTF_8))
             val releaseTag = json.optString("tag_name").trim()
             val releaseName = json.optString("name").trim()
-            val version = releaseTag.takeIf { parseVersion(it) != null }
-                ?: releaseName.takeIf { parseVersion(it) != null }
+            val version = releaseTag.takeIf { parseSemanticVersion(it) != null }
+                ?: releaseName.takeIf { parseSemanticVersion(it) != null }
                 ?: return null
             val releaseUrl = json.optString("html_url").trim()
             val releaseUri = runCatching { URL(releaseUrl) }.getOrNull()
             if (releaseUri?.protocol != "https" || releaseUri.host != "github.com") return null
             val current = context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty()
-            if (compareVersions(version, current) <= 0) return null
+            if (compareSemanticVersions(version, current) <= 0) return null
             AvailableRelease(version, json.optString("body").trim().take(1_200), releaseUrl)
         } finally {
             connection.disconnect()
         }
     }
 
-    private data class Version(val major: Int, val minor: Int, val patch: Int, val prerelease: String?)
 
-    private fun parseVersion(value: String): Version? {
-        val match = Regex("^[\\s\\-vV]*(\\d+)\\.(\\d+)\\.(\\d+)(?:-([0-9A-Za-z.-]+))?(?:\\+[0-9A-Za-z.-]+)?$")
-            .matchEntire(value.trim()) ?: return null
-        return Version(
-            match.groupValues[1].toIntOrNull() ?: return null,
-            match.groupValues[2].toIntOrNull() ?: return null,
-            match.groupValues[3].toIntOrNull() ?: return null,
-            match.groupValues[4].ifEmpty { null },
-        )
-    }
-
-    private fun compareVersions(candidate: String, installed: String): Int {
-        val left = parseVersion(candidate) ?: return 0
-        val right = parseVersion(installed) ?: return 0
-        compareValuesBy(left, right, Version::major, Version::minor, Version::patch).takeIf { it != 0 }?.let { return it }
-        if (left.prerelease == null) return if (right.prerelease == null) 0 else 1
-        if (right.prerelease == null) return -1
-        val leftParts = left.prerelease.split('.')
-        val rightParts = right.prerelease.split('.')
-        for (index in 0 until maxOf(leftParts.size, rightParts.size)) {
-            if (index >= leftParts.size) return -1
-            if (index >= rightParts.size) return 1
-            val a = leftParts[index]
-            val b = rightParts[index]
-            val aNumber = a.toIntOrNull()
-            val bNumber = b.toIntOrNull()
-            val compared = when {
-                aNumber != null && bNumber != null -> aNumber.compareTo(bNumber)
-                aNumber != null -> -1
-                bNumber != null -> 1
-                else -> a.compareTo(b)
-            }
-            if (compared != 0) return compared
-        }
-        return 0
-    }
 }

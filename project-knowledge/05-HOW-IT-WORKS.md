@@ -1,7 +1,21 @@
 # How it works
 
-At app startup, `ReleaseChecker` requests the public latest-release metadata for `mryuvraj1/Reverso` over HTTPS on an IO dispatcher. It compares numeric version components with the installed `versionName`; when newer, Compose presents a dialog with release notes and a link to GitHub. Network failures are ignored so the editor remains usable offline. The app does not download or install updates.
+## Open and edit a file
 
-On Android, `MainActivity` maintains open tabs in Compose state. New creates a blank in-memory tab. Open invokes Android’s document picker and reads the selected URI; Save writes through the content resolver or invokes the document picker for a new tab. Find/replace edits the active tab text. Ctrl+S and Ctrl+F are handled for external keyboards. The platform picker grants access to user-selected documents; the app does not request broad storage access. The Android editor still does not call Rust.
+1. The user taps Open File and Android's `OpenDocument` picker returns a content URI.
+2. Reverso attempts to persist the picker permission, reads UTF-8 text from `ContentResolver`, and creates or activates an `EditorTab` keyed by URI.
+3. `EditorSurface` displays the tab's `TextFieldValue`; typing updates text and sets its dirty flag.
+4. The syntax transformation colors text without changing character offsets. The toolbar inserts punctuation at the current selection.
+5. Save writes UTF-8 to the selected URI. An unsaved tab invokes Android's Create Document picker. IO failures appear in the status bar.
 
-The Rust `TextBuffer` owns a `String`. Before slicing or replacing, it checks range order, length, and UTF-8 character boundaries. `Editor` tracks a cursor and optional anchor/head selection. Insertion replaces a selection or inserts at the cursor; each edit stores replaced and inserted text for undo/redo. Search reports byte ranges, and line/column lookup counts lines and Unicode scalar values.
+## Open a workspace
+
+1. Open Folder launches Android's document-tree picker.
+2. Reverso persists read/write tree permissions where available and wraps the selected URI in `DocumentFile`.
+3. It saves the folder's URI and display name in app-private preferences, bounded to eight recent entries.
+4. The Explorer lists immediate children. Selecting a directory toggles expansion; enumeration is limited to expanded folders and depth five. Selecting a file reads it into an editor tab.
+5. New file/folder actions call `DocumentFile.createFile` / `createDirectory` under the granted root.
+
+## Search and tools
+
+Search examines only currently open editor text. Find/replace changes the active buffer and marks it dirty. Output shows actual app events. Terminal, Git, debugger, diagnostics, and extension panels explain that their backends are not connected, rather than fabricating results.

@@ -2,9 +2,8 @@
 
 ## Unreleased
 
-- Added Rust text-buffer and editor-engine crates with editing primitives and unit tests.
-- Added a Kotlin/Compose Android editor with document picker, multiple tabs, find/replace, and keyboard shortcuts.
-- Added a pinned Gradle 8.9 wrapper and debug APK artifact upload in CI.
-- Added a startup check for published GitHub releases with an in-app update notice that links to release notes.
-- Fixed Rust editor range validation to avoid changing text during cursor/selection checks.
-- Added project knowledge, contribution/security guidance, and CI workflow.
+- Replaced the starter editor screen with a Reverso-branded, responsive mobile IDE shell.
+- Added an original adaptive launcher icon, activity navigation, recent workspace explorer, folder expansion and file/folder creation.
+- Added editor tabs, breadcrumbs, line numbers, lightweight syntax coloring, touch keyboard toolbar, wide-screen split editor, status bar, and resizable bottom tools.
+- Added clear unavailable states for Termux, Git, debugging, language-server diagnostics, and extensions until real backends exist.
+- Added editor-model and semantic-version tests and expanded implementation documentation.

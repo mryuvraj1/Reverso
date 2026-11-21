@@ -1,0 +1,5 @@
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/reverso_icon_background" />
+    <foreground android:drawable="@drawable/reverso_mark" />
+    <monochrome android:drawable="@drawable/reverso_mark" />
+</adaptive-icon>

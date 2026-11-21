@@ -22,7 +22,7 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
-      - run: ./gradlew assembleDebug lint
+      - run: ./gradlew testDebugUnitTest assembleDebug lint
       - uses: actions/upload-artifact@v4
         with:
           name: reverso-android-debug-apk
