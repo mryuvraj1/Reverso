@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Add official GitHub Releases update checks, stable/beta settings, WorkManager scheduling, cached release history, in-app notices and deduplicated Android notifications.
+- Add bounded compatible APK downloads, GitHub SHA-256 verification when supplied, and explicit user-confirmed Android installer handoff; report releases without APK assets as source-only.
+- Preserve exact source filenames and add SAF-backed project storage/file operations (see current implementation notes in `project-knowledge/`).
+
+## Unreleased
+
 - Fixed extension handling for SAF Save As, preserving typed names with wildcard MIME and selecting file MIME from the actual suffix.
 - Preserved SAF parent-tree grants for created projects, restored the latest workspace at launch, and routed new items to the selected nested folder.
 - Added Explorer refresh, file type icons, exact-name validation, and provider-backed rename/delete/copy/move actions with explicit unsupported-provider errors.

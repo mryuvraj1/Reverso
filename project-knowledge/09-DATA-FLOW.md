@@ -18,4 +18,4 @@ User configures provider/endpoint/model/key -> endpoint passes HTTPS validation 
 
 ## Update notice flow
 
-App starts -> `ReleaseChecker` requests latest release metadata over HTTPS on a background dispatcher -> semantic version is compared with installed `versionName` -> if newer, Compose shows a dialog -> user can dismiss or open the validated HTTPS release page. The app does not download/install an update.
+App starts (or WorkManager runs) -> `ReleaseChecker` requests the fixed public Releases API over HTTPS on a background dispatcher, subject to cache/minimum interval -> draft/invalid tags are filtered and beta tags are optional -> metadata and timestamp are cached -> version is compared with installed `versionName` -> newer release can show an in-app dialog and a deduplicated notification. On user download action, `UpdateInstaller` bounds the APK transfer, validates source/size and SHA-256 when provided, stores it in cache and opens Android’s package installer after user confirmation/permission. Android performs signature validation and installation confirmation; absent APK is shown as source-only. See [17-UPDATE-SYSTEM.md](17-UPDATE-SYSTEM.md).

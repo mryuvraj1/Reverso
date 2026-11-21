@@ -6,7 +6,7 @@
 - App shows no files: Reverso only displays the user-selected SAF workspace. Choose a folder with Open Folder or Create New Project; files elsewhere on device are not scanned.
 - Cursor offsets: Rust APIs use UTF-8 byte offsets. Do not pass Compose offsets until a conversion/bridge is implemented.
 
-- No update notice: the app checks published stable GitHub Releases at startup; drafts, prereleases, tags without a published release, same/older versions, and network failures do not trigger a notice.
+- No update notice: automatic checks may be disabled; otherwise the app uses the official GitHub Releases API and network availability. Drafts/invalid tags are ignored, prereleases need the beta channel, same/older versions are not updates, and a remind-later choice suppresses that release tag. Cached history remains visible after network errors. WorkManager execution may be delayed by Android.
 
 ## AI provider setup and failures
 

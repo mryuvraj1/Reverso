@@ -29,10 +29,16 @@ The provider settings screen stores endpoint and model per provider. The API key
 ## GitHub release lookup
 
 - Method: `GET`
-- Endpoint: `https://api.github.com/repos/mryuvraj1/Reverso/releases/latest`
-- Authentication: none; the repository is public.
-- Request headers: `Accept: application/vnd.github+json`, `User-Agent: Reverso-Android`, `X-GitHub-Api-Version: 2026-03-10`.
-- Read fields: `tag_name`, `name`, `body`, and `html_url`. A newer semantic version triggers an in-app notice; the user can open the verified GitHub release page. No APK download/install occurs.
+- Endpoint: `https://api.github.com/repos/mryuvraj1/Reverso/releases?per_page=100`
+- Authentication: none; the configured public repository is fixed in `ReleaseChecker.kt`.
+- Request headers: `Accept: application/vnd.github+json`, `User-Agent: Reverso-Android`, `X-GitHub-Api-Version: 2022-11-28`.
+- Read fields: `tag_name`, `name`, `body`, `html_url`, `published_at`, `draft`, `prerelease`, and uploaded asset `name`, `state`, `browser_download_url`, `digest`, `size`.
+- Filtering: draft releases and invalid semantic-version tags are skipped. Prereleases are retained in history but excluded from update selection unless beta is enabled. Only release links and APK assets on HTTPS paths for `github.com/mryuvraj1/Reverso` are accepted.
+- Cache and rate handling: successful metadata is cached locally for six hours; requests are rate-limited client-side to one per minute. Response is bounded to 1.5 MB, timeouts apply, and HTTP errors (including GitHub rate limits) are shown while cached releases remain available.
+- Response: internal `AvailableRelease` list; selected fields are `tag`, `name`, `notes`, `url`, `publishedAt`, `prerelease`, and optional compatible `apk` (`name`, `url`, `digest`, `size`). This is not a public Reverso server API.
+- Failures: network/timeouts/HTTP errors return cached releases plus an error string; malformed entries are ignored. No credential is sent.
+- APK flow: compatible official APK metadata is downloaded only after user action, size and SHA-256 are checked when available, and Android's package installer is opened only after user action. Missing checksum requires acknowledgement; missing APK is source-only. No silent install is performed.
+- References: [GitHub Releases REST API](https://docs.github.com/en/rest/releases/releases), [Android WorkManager persistent tasks](https://developer.android.com/develop/background-work/background-tasks/persistent), [Android notification permission](https://developer.android.com/develop/ui/compose/notifications/notification-permission).
 
 ## Rust library interfaces
 

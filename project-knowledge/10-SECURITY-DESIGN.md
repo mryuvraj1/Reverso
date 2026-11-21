@@ -14,7 +14,7 @@ Provider billing, data handling and retention are governed by the provider accou
 
 ## Release checking
 
-The app makes an unauthenticated HTTPS request to GitHub's public Releases API at startup and opens only an HTTPS `github.com` release URL. It does not fetch executable APKs or install updates. Android controls app installation.
+The app makes unauthenticated HTTPS requests only to the fixed public GitHub Releases API and validates release/asset origins. APK downloads are bounded and checked against GitHub SHA-256 when available; absent digest requires user acknowledgement. APKs stay in app cache behind a non-exported FileProvider. Android controls unknown-source permission, package signature validation and final installation confirmation. Details: [17-UPDATE-SYSTEM.md](17-UPDATE-SYSTEM.md).
 
 ## Unavailable backends
 

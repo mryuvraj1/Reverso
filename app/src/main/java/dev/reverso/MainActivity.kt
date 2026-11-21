@@ -1,9 +1,12 @@
 package dev.reverso
 
+import android.Manifest
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.Build
 import android.provider.DocumentsContract
+import android.content.pm.PackageManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -45,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import dev.reverso.ui.*
 import kotlinx.coroutines.Dispatchers
@@ -92,6 +96,16 @@ private fun ReversoApp() {
     var operationKind by remember { mutableStateOf<WorkspaceFileAction?>(null) }
     var operationDestination by remember { mutableStateOf<DocumentFile?>(null) }
     var pendingRelease by remember { mutableStateOf<AvailableRelease?>(null) }
+    var updateResult by remember { mutableStateOf(ReleaseCheckResult(ReleaseChecker.history(context), ReleaseChecker.lastChecked(context))) }
+    var checkingUpdates by remember { mutableStateOf(false) }
+    var automaticUpdates by remember { mutableStateOf(UpdatePreferences.automatic(context)) }
+    var betaUpdates by remember { mutableStateOf(UpdatePreferences.beta(context)) }
+    var updateNotifications by remember { mutableStateOf(UpdatePreferences.notifications(context)) }
+    var downloadingTag by remember { mutableStateOf<String?>(null) }
+    var downloadError by remember { mutableStateOf<String?>(null) }
+    var downloadedUpdate by remember { mutableStateOf<DownloadedUpdate?>(null) }
+    var installError by remember { mutableStateOf<String?>(null) }
+    var pendingInstallerPermission by remember { mutableStateOf<DownloadedUpdate?>(null) }
     var splitMode by remember { mutableStateOf(false) }
     var aiConfig by remember { mutableStateOf(AiConfigRepository.load(context)) }
     var credentialSaved by remember { mutableStateOf(aiConfig?.let { SecureCredentialStore.has(context, it.provider) } ?: false) }
@@ -102,8 +116,24 @@ private fun ReversoApp() {
     var showApplyConfirmation by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val active = tabs.firstOrNull { it.id == activeId }
+    val currentAppVersion = ReleaseChecker.currentVersion(context)
+    val latestAvailableRelease = ReleaseChecker.latestPublished(updateResult.releases, betaUpdates)
+    val notificationsPermissionGranted = Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
     val treeItems = remember(workspace, workspace?.root, expandedFolders.toList(), workspaceRevision) {
         workspace?.let { listWorkspaceItems(it.root, expandedFolders.toSet()) }.orEmpty()
+    }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        updateNotifications = granted
+        UpdatePreferences.setNotifications(context, granted)
+    }
+    val packageInstallPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        val queued = pendingInstallerPermission
+        if (queued != null && UpdateInstaller.installPermissionIntent(context) == null) {
+            runCatching { context.startActivity(UpdateInstaller.installIntent(context, queued.file)) }
+                .onFailure { installError = it.message ?: "Android could not open the package installer" }
+        }
+        pendingInstallerPermission = null
     }
 
     LaunchedEffect(Unit) {
@@ -115,10 +145,49 @@ private fun ReversoApp() {
                 status = "Workspace restored: ${restored.name}"
             }
         }
-        pendingRelease = withContext(Dispatchers.IO) { runCatching { ReleaseChecker.latest(context) }.getOrNull() }
+        UpdateNotification.ensureChannel(context)
+        UpdateScheduler.configure(context)
+        if (automaticUpdates) {
+            checkingUpdates = true
+            val result = withContext(Dispatchers.IO) { ReleaseChecker.check(context, betaUpdates) }
+            updateResult = result
+            pendingRelease = ReleaseChecker.latestNewer(context, result.releases, betaUpdates)?.takeUnless { UpdatePreferences.isRemindedLater(context, it.tag) }
+            checkingUpdates = false
+        }
     }
 
     fun log(message: String) { output = (output + message).takeLast(100) }
+    fun checkUpdates(force: Boolean = true) {
+        if (checkingUpdates) return
+        checkingUpdates = true
+        coroutineScope.launch {
+            val result = withContext(Dispatchers.IO) { ReleaseChecker.check(context, betaUpdates, force) }
+            updateResult = result
+            pendingRelease = ReleaseChecker.latestNewer(context, result.releases, betaUpdates)?.takeUnless { UpdatePreferences.isRemindedLater(context, it.tag) }
+            checkingUpdates = false
+            if (result.error != null) status = result.error else status = "Release information updated"
+        }
+    }
+    fun downloadUpdate(release: AvailableRelease) {
+        if (release.apk == null) { downloadError = "This release has no compatible Android APK; it is available as source code only."; return }
+        downloadedUpdate = null
+        downloadingTag = release.tag
+        downloadError = null
+        coroutineScope.launch {
+            runCatching { withContext(Dispatchers.IO) { UpdateInstaller.download(context, release) } }
+                .onSuccess { downloadedUpdate = it; status = "Downloaded Reverso ${release.tag}" }
+                .onFailure { downloadError = it.message ?: "APK download failed" }
+            downloadingTag = null
+        }
+    }
+    fun openAndroidInstaller(update: DownloadedUpdate) {
+        val settingsIntent = UpdateInstaller.installPermissionIntent(context)
+        if (settingsIntent != null) {
+            pendingInstallerPermission = update
+            packageInstallPermissionLauncher.launch(settingsIntent)
+        } else runCatching { context.startActivity(UpdateInstaller.installIntent(context, update.file)) }
+            .onFailure { installError = it.message ?: "Android could not open the package installer" }
+    }
     fun updateTab(tab: EditorTab) {
         val index = tabs.indexOfFirst { it.id == tab.id }
         if (index >= 0) tabs[index] = tab
@@ -402,6 +471,12 @@ private fun ReversoApp() {
                         exit = shrinkHorizontally(shrinkTowards = Alignment.Start) + slideOutHorizontally { -it / 3 } + fadeOut(),
                     ) {
                         IdeSidebar(activity, true, workspace?.name, treeItems, tabs, activeId, query, aiMessages, aiConfig != null && credentialSaved, aiLoading, aiError,
+                            updateHistory = updateResult.releases, currentVersion = currentAppVersion, latestRelease = latestAvailableRelease, checkedAt = updateResult.checkedAt, updateError = updateResult.error, checkingUpdates = checkingUpdates, automaticUpdates = automaticUpdates, betaUpdates = betaUpdates, updateNotifications = updateNotifications, notificationsPermissionGranted = notificationsPermissionGranted,
+                            onAutomaticUpdates = { automaticUpdates = it; UpdatePreferences.setAutomatic(context, it); if (it) checkUpdates() }, onBetaUpdates = { betaUpdates = it; UpdatePreferences.setBeta(context, it); checkUpdates() }, onUpdateNotifications = { enabled ->
+                                if (enabled && Build.VERSION.SDK_INT >= 33 && !notificationsPermissionGranted) notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                else { updateNotifications = enabled; UpdatePreferences.setNotifications(context, enabled) }
+                            }, onRequestNotificationPermission = { if (Build.VERSION.SDK_INT >= 33) notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) },
+                            onCheckUpdates = { checkUpdates() }, onDownloadUpdate = ::downloadUpdate, onViewRelease = { runCatching { uriHandler.openUri(it.url) } },
                             onActivity = { activity = it }, onQuery = { query = it }, onOpenFolder = { openFolder.launch(null) },
                             onOpenFile = { openDocument.launch(arrayOf("text/*", "application/json", "application/xml", "application/octet-stream")) },
                             onCreateFile = { createFolder = false; createDialog = true }, onCreateFolder = { createFolder = true; createDialog = true },
@@ -431,6 +506,12 @@ private fun ReversoApp() {
                             EditorArea(active, tabs, activeId, false, workspace?.name, recents, onSelect = { activeId = it.id }, onClose = { tabs.remove(it); if (activeId == it.id) activeId = tabs.lastOrNull()?.id }, onValue = ::updateTab, onWorkspace = { activity = IdeActivity.EXPLORER; sidebarOverride = true }, onInsert = { active?.let { tab -> updateTab(insertAtSelection(tab, it)) } }, onWelcome = { activeId = null }, onNew = { newProjectDialog = true }, onOpen = { openDocument.launch(arrayOf("text/*", "application/json", "application/xml", "application/octet-stream")) }, onFolder = { openFolder.launch(null) }, onRecent = { RecentProjects.open(context, it)?.let { ws -> workspace = ws; sidebarOverride = true } }, onDocs = { runCatching { uriHandler.openUri("https://github.com/mryuvraj1/Reverso/tree/main/project-knowledge") } })
                         } else {
                             IdeSidebar(activity, false, workspace?.name, treeItems, tabs, activeId, query, aiMessages, aiConfig != null && credentialSaved, aiLoading, aiError,
+                                updateHistory = updateResult.releases, currentVersion = currentAppVersion, latestRelease = latestAvailableRelease, checkedAt = updateResult.checkedAt, updateError = updateResult.error, checkingUpdates = checkingUpdates, automaticUpdates = automaticUpdates, betaUpdates = betaUpdates, updateNotifications = updateNotifications, notificationsPermissionGranted = notificationsPermissionGranted,
+                                onAutomaticUpdates = { automaticUpdates = it; UpdatePreferences.setAutomatic(context, it); if (it) checkUpdates() }, onBetaUpdates = { betaUpdates = it; UpdatePreferences.setBeta(context, it); checkUpdates() }, onUpdateNotifications = { enabled ->
+                                    if (enabled && Build.VERSION.SDK_INT >= 33 && !notificationsPermissionGranted) notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    else { updateNotifications = enabled; UpdatePreferences.setNotifications(context, enabled) }
+                                }, onRequestNotificationPermission = { if (Build.VERSION.SDK_INT >= 33) notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) },
+                                onCheckUpdates = { checkUpdates() }, onDownloadUpdate = ::downloadUpdate, onViewRelease = { runCatching { uriHandler.openUri(it.url) } },
                                 onActivity = { activity = it }, onQuery = { query = it }, onOpenFolder = { openFolder.launch(null) },
                                 onOpenFile = { openDocument.launch(arrayOf("text/*", "application/json", "application/xml", "application/octet-stream")) },
                                 onCreateFile = { createFolder = false; createDialog = true }, onCreateFolder = { createFolder = true; createDialog = true },
@@ -451,10 +532,30 @@ private fun ReversoApp() {
         }
     }
 
-    pendingRelease?.let { release -> AlertDialog(onDismissRequest = { pendingRelease = null }, title = { Text("Reverso ${release.tag} is available") },
-        text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { Text("A newer version has been published."); if (release.notes.isNotBlank()) Text(release.notes, maxLines = 8, color = ReversoColors.Muted); Text("The release page has download and installation instructions.", color = ReversoColors.Muted, style = MaterialTheme.typography.bodySmall) } },
-        confirmButton = { TextButton(onClick = { runCatching { uriHandler.openUri(release.url) }; pendingRelease = null }) { Text("View release") } },
-        dismissButton = { TextButton(onClick = { pendingRelease = null }) { Text("Later") } }) }
+    pendingRelease?.let { release -> AlertDialog(onDismissRequest = { pendingRelease = null }, title = { Text("New Reverso update available") },
+        text = { Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Current version: $currentAppVersion")
+            Text("Latest version: ${release.tag}")
+            Text("Published: ${release.publishedAt.take(10)} · ${if (release.prerelease) "Beta" else "Stable"}", color = ReversoColors.Muted, style = MaterialTheme.typography.bodySmall)
+            if (release.notes.isNotBlank()) Text(release.notes, color = ReversoColors.Muted)
+            Text(if (release.apk == null) "No compatible Android APK is attached. This release is available as source code only." else "APK: ${release.apk.name}. Android will show its normal installation confirmation.", color = ReversoColors.Muted, style = MaterialTheme.typography.bodySmall)
+        } },
+        confirmButton = { Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            if (release.apk != null) TextButton(onClick = { pendingRelease = null; downloadUpdate(release) }) { Text("Download Update") }
+            TextButton(onClick = { runCatching { uriHandler.openUri(release.url) }; pendingRelease = null }) { Text("View Release Notes") }
+        } },
+        dismissButton = { TextButton(onClick = { UpdatePreferences.remindLater(context, release.tag); pendingRelease = null }) { Text("Remind Me Later") } }) }
+
+    downloadingTag?.let { tag -> AlertDialog(onDismissRequest = { }, title = { Text("Downloading Reverso $tag") }, text = { Row(verticalAlignment = Alignment.CenterVertically) { CircularProgressIndicator(Modifier.size(24.dp)); Spacer(Modifier.width(12.dp)); Text("Downloading and verifying the GitHub release APK…") } }, confirmButton = {}) }
+    downloadError?.let { message -> AlertDialog(onDismissRequest = { downloadError = null }, title = { Text("Update download failed") }, text = { Text(message) }, confirmButton = { TextButton(onClick = { downloadError = null }) { Text("OK") } }) }
+    downloadedUpdate?.let { update -> AlertDialog(
+        onDismissRequest = { downloadedUpdate = null },
+        title = { Text("APK ready to install") },
+        text = { Text(if (update.checksumVerified) "GitHub's SHA-256 digest matches the downloaded APK. Android will ask you to confirm installation." else "GitHub did not provide a SHA-256 digest for this asset. The download came from the official Reverso release, but its checksum could not be verified. Continue only if you accept that limitation.") },
+        confirmButton = { TextButton(onClick = { downloadedUpdate = null; openAndroidInstaller(update) }) { Text("Open Android Installer") } },
+        dismissButton = { TextButton(onClick = { downloadedUpdate = null }) { Text("Cancel") } },
+    ) }
+    installError?.let { message -> AlertDialog(onDismissRequest = { installError = null }, title = { Text("Could not open installer") }, text = { Text(message) }, confirmButton = { TextButton(onClick = { installError = null }) { Text("OK") } }) }
 }
 
 private fun fileIconFor(name: String) = when (name.substringAfterLast('.', "").lowercase()) {
@@ -512,6 +613,23 @@ private fun activityIcon(item: IdeActivity) = when (item) {
     aiConfigured: Boolean,
     aiLoading: Boolean,
     aiError: String?,
+    updateHistory: List<AvailableRelease>,
+    currentVersion: String,
+    latestRelease: AvailableRelease?,
+    checkedAt: Long,
+    updateError: String?,
+    checkingUpdates: Boolean,
+    automaticUpdates: Boolean,
+    betaUpdates: Boolean,
+    updateNotifications: Boolean,
+    notificationsPermissionGranted: Boolean,
+    onAutomaticUpdates: (Boolean) -> Unit,
+    onBetaUpdates: (Boolean) -> Unit,
+    onUpdateNotifications: (Boolean) -> Unit,
+    onRequestNotificationPermission: () -> Unit,
+    onCheckUpdates: () -> Unit,
+    onDownloadUpdate: (AvailableRelease) -> Unit,
+    onViewRelease: (AvailableRelease) -> Unit,
     onActivity: (IdeActivity) -> Unit,
     onQuery: (String) -> Unit,
     onOpenFolder: () -> Unit,
@@ -543,6 +661,8 @@ private fun activityIcon(item: IdeActivity) = when (item) {
             )
             else -> SidebarToolPage(
                 activity, workspace, onOpenFolder, onOpenFile, onAiConfigure,
+                updateHistory, currentVersion, latestRelease, checkedAt, updateError, checkingUpdates, automaticUpdates, betaUpdates, updateNotifications, notificationsPermissionGranted,
+                onAutomaticUpdates, onBetaUpdates, onUpdateNotifications, onRequestNotificationPermission, onCheckUpdates, onDownloadUpdate, onViewRelease,
                 modifier = Modifier.weight(1f).fillMaxHeight(),
             )
         }
@@ -631,7 +751,31 @@ private fun activityIcon(item: IdeActivity) = when (item) {
     }
 }
 
-@Composable private fun SidebarToolPage(activity: IdeActivity, workspace: String?, onOpenFolder: () -> Unit, onOpenDocument: () -> Unit, onAiSettings: () -> Unit, modifier: Modifier = Modifier) {
+@Composable private fun SidebarToolPage(
+    activity: IdeActivity,
+    workspace: String?,
+    onOpenFolder: () -> Unit,
+    onOpenDocument: () -> Unit,
+    onAiSettings: () -> Unit,
+    updateHistory: List<AvailableRelease>,
+    currentVersion: String,
+    latestRelease: AvailableRelease?,
+    checkedAt: Long,
+    updateError: String?,
+    checkingUpdates: Boolean,
+    automaticUpdates: Boolean,
+    betaUpdates: Boolean,
+    updateNotifications: Boolean,
+    notificationsPermissionGranted: Boolean,
+    onAutomaticUpdates: (Boolean) -> Unit,
+    onBetaUpdates: (Boolean) -> Unit,
+    onUpdateNotifications: (Boolean) -> Unit,
+    onRequestNotificationPermission: () -> Unit,
+    onCheckUpdates: () -> Unit,
+    onDownloadUpdate: (AvailableRelease) -> Unit,
+    onViewRelease: (AvailableRelease) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(activity.label, style = MaterialTheme.typography.titleLarge)
         when (activity) {
@@ -643,6 +787,13 @@ private fun activityIcon(item: IdeActivity) = when (item) {
                 Text("Editor engine: Android Compose text input. Rust/JNI connection is pending.", color = ReversoColors.Muted)
                 Button(onClick = onAiSettings, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Filled.AutoAwesome, null); Text("  Configure AI provider") }
                 Text("AI keys are stored encrypted in Android Keystore. Requests are sent directly to the configured HTTPS provider.", color = ReversoColors.Muted, style = MaterialTheme.typography.bodySmall)
+                HorizontalDivider(color = ReversoColors.Border)
+                UpdateSettingsScreen(
+                    currentVersion, latestRelease?.tag, updateHistory, checkedAt, updateError, checkingUpdates,
+                    automaticUpdates, betaUpdates, updateNotifications, notificationsPermissionGranted,
+                    onAutomaticUpdates, onBetaUpdates, onUpdateNotifications, onRequestNotificationPermission,
+                    onCheckUpdates, onDownloadUpdate, onViewRelease,
+                )
             }
             else -> {
                 Text("Workspace: ${workspace ?: "No folder open"}", color = ReversoColors.Muted)

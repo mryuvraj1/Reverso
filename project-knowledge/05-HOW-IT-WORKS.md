@@ -24,8 +24,8 @@ The bottom panel is initially closed. The header terminal icon toggles it; selec
 
 Requests use connection/read timeouts and response-size limits. Provider HTTP failures show status codes without echoing server response bodies, which might contain sensitive data. Reverso does not proxy requests or log prompts, source content, or credentials. Provider billing, privacy and retention policies remain applicable.
 
-## Existing release and Rust flows
+## Release update flow
 
-The startup version checker runs on an IO dispatcher, validates a newer semantic version and opens a verified GitHub release page only after user action. It does not download or install the APK.
+The app checks the official releases API on launch when automatic checks are enabled and WorkManager schedules network-constrained periodic checks. Reverso caches release history and timestamp, applies stable/beta preferences and shows release notes for a newer version. A user can request a bounded APK download; the app checks the GitHub checksum when present and asks the user to continue if the digest is absent, then opens Android's package installer. Android owns final signature verification and confirmation. See [17-UPDATE-SYSTEM.md](17-UPDATE-SYSTEM.md).
 
 The Rust crates implement UTF-8-safe editing separately. Android does not call the Rust engine through JNI yet.

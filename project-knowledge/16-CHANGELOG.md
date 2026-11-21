@@ -19,3 +19,7 @@ Documented the responsive hide/show sidebar and editor space recovery, animated 
 ## 2026-11-21 — Professional mobile IDE shell
 
 Documented Reverso branding, responsive navigation, workspace tree, file editing, syntax-colored editor surface and unavailable backend states.
+
+## 2026-11-22
+
+Implemented the official GitHub Releases update manager: stable/beta filtering, launch and periodic checks, cached release history, settings, Android notification channel and deduplication, bounded official APK download, SHA-256 verification when provided, source-only reporting, and Android installer handoff with explicit user confirmation. Added release selection/cache/checksum helper tests and update architecture/security documentation. Device-level network, notification, APK and installer verification remains pending.
