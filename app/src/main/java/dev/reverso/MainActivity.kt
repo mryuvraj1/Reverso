@@ -8,6 +8,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -25,6 +26,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -308,7 +310,7 @@ private fun ReversoApp() {
                             onOpenFile = { openDocument.launch(arrayOf("text/*", "application/json", "application/xml", "application/octet-stream")) },
                             onCreateFile = { createFolder = false; createDialog = true }, onCreateFolder = { createFolder = true; createDialog = true },
                             onFile = { if (it.isDirectory) { if (it.id in expandedFolders) expandedFolders.remove(it.id) else expandedFolders.add(it.id) } else openUri(it.uri, it.name) },
-                            onTab = { activeId = it.id; activity = IdeActivity.EXPLORER }, onAiConfigure = { showAiSettings = true },
+                            onTab = { activeId = it.id; activity = IdeActivity.EXPLORER }, onAiConfigure = { showAiSettings = true }, onAiNewChat = { aiMessages.clear() },
                             onAiSend = ::sendAi, onAiApply = { if (active != null && latestAiResponse != null) showApplyConfirmation = true else aiError = "Open a file and request an AI response before applying." },
                             onRecent = { RecentProjects.open(context, it)?.let { ws -> workspace = ws; activity = IdeActivity.EXPLORER } },
                             modifier = Modifier.fillMaxHeight())
@@ -326,17 +328,16 @@ private fun ReversoApp() {
                 }
             } else {
                 Column(Modifier.weight(1f).fillMaxWidth()) {
-                    Box(Modifier.weight(1f).fillMaxWidth()) {
-                        AnimatedVisibility(visible = !sidebarVisible, modifier = Modifier.fillMaxSize(), enter = fadeIn(), exit = fadeOut()) {
+                    AnimatedContent(targetState = sidebarVisible, modifier = Modifier.weight(1f).fillMaxWidth(), label = "phone_sidebar_content") { showSidebar ->
+                        if (!showSidebar) {
                             EditorArea(active, tabs, activeId, false, workspace?.name, recents, onSelect = { activeId = it.id }, onClose = { tabs.remove(it); if (activeId == it.id) activeId = tabs.lastOrNull()?.id }, onValue = ::updateTab, onWorkspace = { activity = IdeActivity.EXPLORER; sidebarOverride = true }, onInsert = { active?.let { tab -> updateTab(insertAtSelection(tab, it)) } }, onWelcome = { activeId = null }, onNew = { newProjectDialog = true }, onOpen = { openDocument.launch(arrayOf("text/*", "application/json", "application/xml", "application/octet-stream")) }, onFolder = { openFolder.launch(null) }, onRecent = { RecentProjects.open(context, it)?.let { ws -> workspace = ws; sidebarOverride = true } }, onDocs = { runCatching { uriHandler.openUri("https://github.com/mryuvraj1/Reverso/tree/main/project-knowledge") } })
-                        }
-                        AnimatedVisibility(visible = sidebarVisible, modifier = Modifier.fillMaxSize(), enter = fadeIn(), exit = fadeOut()) {
+                        } else {
                             IdeSidebar(activity, false, workspace?.name, treeItems, tabs, activeId, query, aiMessages, aiConfig != null && credentialSaved, aiLoading, aiError,
                                 onActivity = { activity = it }, onQuery = { query = it }, onOpenFolder = { openFolder.launch(null) },
                                 onOpenFile = { openDocument.launch(arrayOf("text/*", "application/json", "application/xml", "application/octet-stream")) },
                                 onCreateFile = { createFolder = false; createDialog = true }, onCreateFolder = { createFolder = true; createDialog = true },
                                 onFile = { if (it.isDirectory) { if (it.id in expandedFolders) expandedFolders.remove(it.id) else expandedFolders.add(it.id) } else openUri(it.uri, it.name) },
-                                onTab = { activeId = it.id; activity = IdeActivity.EXPLORER; sidebarOverride = false }, onAiConfigure = { showAiSettings = true },
+                                onTab = { activeId = it.id; activity = IdeActivity.EXPLORER; sidebarOverride = false }, onAiConfigure = { showAiSettings = true }, onAiNewChat = { aiMessages.clear() },
                                 onAiSend = ::sendAi, onAiApply = { if (active != null && latestAiResponse != null) showApplyConfirmation = true else aiError = "Open a file and request an AI response before applying." },
                                 onRecent = { RecentProjects.open(context, it)?.let { ws -> workspace = ws; activity = IdeActivity.EXPLORER; sidebarOverride = true } }, modifier = Modifier.fillMaxSize())
                         }
@@ -408,6 +409,7 @@ private fun activityIcon(item: IdeActivity) = when (item) {
     onFile: (WorkspaceItem<DocumentFile>) -> Unit,
     onTab: (EditorTab) -> Unit,
     onAiConfigure: () -> Unit,
+    onAiNewChat: () -> Unit,
     onAiSend: (String, Boolean) -> Unit,
     onAiApply: () -> Unit,
     onRecent: (RecentProject) -> Unit,
@@ -422,7 +424,7 @@ private fun activityIcon(item: IdeActivity) = when (item) {
             )
             IdeActivity.AI_CHAT -> AiChatScreen(
                 messages = aiMessages, configured = aiConfigured, activeFileName = tabs.firstOrNull { it.id == activeId }?.title,
-                loading = aiLoading, error = aiError, onConfigure = onAiConfigure, onNewChat = { aiMessages.clear() }, onSend = onAiSend, onApplyLatest = onAiApply,
+                loading = aiLoading, error = aiError, onConfigure = onAiConfigure, onNewChat = onAiNewChat, onSend = onAiSend, onApplyLatest = onAiApply,
                 modifier = Modifier.weight(1f),
             )
             else -> SidebarToolPage(
