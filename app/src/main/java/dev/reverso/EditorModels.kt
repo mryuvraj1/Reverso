@@ -65,5 +65,10 @@ internal fun insertAtSelection(tab: EditorTab, inserted: String, indentation: St
     return tab.copy(value = TextFieldValue(text, TextRange(cursor)))
 }
 
-internal data class ProjectWorkspace(val rootUri: Uri, val root: DocumentFile, val name: String)
-internal data class RecentProject(val name: String, val uri: String)
+internal data class ProjectWorkspace(
+    val rootUri: Uri,
+    val root: DocumentFile,
+    val name: String,
+    val grantTreeUri: Uri = rootUri,
+)
+internal data class RecentProject(val name: String, val uri: String, val childName: String? = null)

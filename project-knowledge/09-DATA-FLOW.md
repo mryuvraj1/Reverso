@@ -6,7 +6,7 @@ Caller supplies text -> `Editor` stores `TextBuffer` -> action validates byte ra
 
 ## Android local file path
 
-User launches Android `OpenDocument` or `OpenDocumentTree` -> SAF returns a URI and scoped permission -> `ContentResolver` reads/writes file text or `DocumentFile` enumerates/creates items -> Compose updates the matching `EditorTab` -> Save writes through the same URI or launches Create Document for an unsaved tab. No app-private workspace copy is made.
+User launches Android `OpenDocument` or `OpenDocumentTree` -> SAF returns a URI and scoped permission -> `ContentResolver` reads/writes file text or `DocumentFile` enumerates/creates items -> Compose updates the matching `EditorTab` -> Save writes through the same URI or launches wildcard-MIME Create Document with the tab name for an unsaved/Save As operation. New project records retain the selected parent tree URI plus child directory name; launch restoration reopens the child through that granted tree. Nested folder selection determines the parent for new items. Rename/delete and `DocumentsContract` copy/move mutate the selected provider and trigger Explorer refresh. No app-private workspace copy is made.
 
 ## Sidebar and bottom panel
 

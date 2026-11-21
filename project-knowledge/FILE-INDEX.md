@@ -21,10 +21,10 @@ Inventory generated from the actual repository tree. Build outputs and dependenc
 | `app/src/main/AndroidManifest.xml` | Project file | Project configuration or resource | Workspace |
 | `app/src/main/java/dev/reverso/AiProvider.kt` | Android Kotlin source | Provider API client and encrypted credential/config storage | Android AI |
 | `app/src/main/java/dev/reverso/EditorModels.kt` | Android Kotlin source | Editor, navigation and workspace models | Android app |
-| `app/src/main/java/dev/reverso/MainActivity.kt` | Android Kotlin source | Responsive IDE layout, SAF flows and feature routing | Android app |
+| `app/src/main/java/dev/reverso/MainActivity.kt` | Android Kotlin source | Responsive IDE layout, SAF workflows and feature routing | Android app |
 | `app/src/main/java/dev/reverso/ReleaseChecker.kt` | Android Kotlin source | Release notification and semantic version comparison | Android app |
 | `app/src/main/java/dev/reverso/Versioning.kt` | Android Kotlin source | Release notification and semantic version comparison | Android app |
-| `app/src/main/java/dev/reverso/WorkspaceRepository.kt` | Android Kotlin source | Recent projects and SAF workspace enumeration | Android app |
+| `app/src/main/java/dev/reverso/WorkspaceRepository.kt` | Android Kotlin source | Persisted SAF workspace access, name/MIME validation, and file operations | Android app |
 | `app/src/main/java/dev/reverso/ui/AiScreens.kt` | Compose UI component | AI provider settings and chat interface | Android AI/UI |
 | `app/src/main/java/dev/reverso/ui/Brand.kt` | Compose UI component | Reverso mark composable | Android branding |
 | `app/src/main/java/dev/reverso/ui/EditorSurface.kt` | Compose UI component | Editor tabs, breadcrumbs, text surface and keyboard toolbar | Android editor UI |
@@ -37,6 +37,7 @@ Inventory generated from the actual repository tree. Build outputs and dependenc
 | `app/src/test/java/dev/reverso/AiProviderConfigTest.kt` | Kotlin unit test | Regression coverage for editor, AI config or versions | Android app tests |
 | `app/src/test/java/dev/reverso/EditorModelsTest.kt` | Kotlin unit test | Regression coverage for editor, AI config or versions | Android app tests |
 | `app/src/test/java/dev/reverso/VersioningTest.kt` | Kotlin unit test | Regression coverage for editor, AI config or versions | Android app tests |
+| `app/src/test/java/dev/reverso/WorkspaceStorageTest.kt` | Kotlin unit test | Regression coverage for exact filenames and extension-derived types | Android app tests |
 | `build.gradle.kts` | Build/configuration | Build setup, dependency lock or repository settings | Workspace |
 | `crates/editor-engine/Cargo.toml` | Cargo manifest | Rust crate metadata and dependencies | Rust workspace |
 | `crates/editor-engine/src/lib.rs` | Rust source | UTF-8 editing engine implementation | Rust workspace |

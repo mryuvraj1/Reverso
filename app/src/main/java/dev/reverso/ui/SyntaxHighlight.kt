@@ -12,10 +12,12 @@ class ReversoSyntaxHighlight : VisualTransformation {
         val source = text.text
         val builder = AnnotatedString.Builder(source)
         val rules = listOf(
-            Regex("\\b(fun|fn|class|struct|enum|interface|object|data|sealed|val|var|const|let|mut|return|if|else|when|match|for|while|loop|import|package|use|mod|pub|async|await|go|func|def|type|impl|trait|self|true|false|null|nil)\\b") to ReversoColors.Purple,
+            Regex("\\b(fun|fn|class|struct|enum|interface|object|data|sealed|val|var|const|let|mut|return|if|else|when|match|for|while|loop|import|package|use|mod|pub|async|await|go|func|def|type|impl|trait|self|this|super|new|throw|try|catch|finally|extends|implements|public|private|static|void|int|string|true|false|null|nil|None|pass|lambda|yield|from|as|in|is|not|and|or)\\b") to ReversoColors.Purple,
+            Regex("@[A-Za-z_][A-Za-z0-9_]*") to ReversoColors.Blue,
+            Regex("</?[A-Za-z][^>]*>|[.#][A-Za-z_-][A-Za-z0-9_-]*(?=\\s*\\{)") to ReversoColors.Blue,
             Regex("\\b[0-9]+(?:\\.[0-9]+)?\\b") to ReversoColors.Warning,
             Regex("\"(?:\\\\.|[^\"\\\\])*\"|'(?:\\\\.|[^'\\\\])*'") to ReversoColors.Mint,
-            Regex("//[^\\n]*|#[^\\n]*") to ReversoColors.Muted,
+            Regex("//[^\\n]*|#[^\\n]*|/\\*[\\s\\S]*?\\*/|<!--([\\s\\S]*?)-->") to ReversoColors.Muted,
         )
         rules.forEach { (pattern, color) ->
             pattern.findAll(source).forEach { match ->

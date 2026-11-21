@@ -1,5 +1,13 @@
 # Project knowledge changelog
 
+## 2026-11-22 — File handling and narrow-screen polish
+
+Documented exact-extension Save As/create, nested workspace targets, persistent SAF tree grants and startup restoration, Explorer refresh and file icons, storage-provider rename/delete/copy/move, keyboard resizing and the launch-only update-check boundary.
+
+## 2026-11-22 — SAF filename and workspace persistence fixes
+
+Documented exact-name Save As, extension-derived MIME types, child-project persistence via the original granted tree URI, auto-restoration of the latest workspace, nested creation targets, provider-backed rename/delete/copy/move, and manual Explorer refresh. Recorded device-only SAF verification requirements and the still-incomplete background update/notification/APK installer system.
+
 ## 2026-11-21 — CI verification
 
 Recorded successful Android and Rust CI for the IDE and AI provider changes; the workflow uploaded a debug APK artifact.
