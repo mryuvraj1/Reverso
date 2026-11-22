@@ -1,6 +1,7 @@
 package dev.reverso.ui
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,7 +16,8 @@ import dev.reverso.R
 
 @Composable
 fun ReversoMark(size: Dp, modifier: Modifier = Modifier) {
-    Surface(modifier = modifier.size(size), color = ReversoColors.Raised, shape = RoundedCornerShape(size * 0.28f)) {
+    val shape = RoundedCornerShape(size * 0.28f)
+    Surface(modifier = modifier.size(size).border(1.dp, ReversoColors.Border, shape), color = ReversoColors.Raised, shape = shape) {
         Box(contentAlignment = Alignment.Center) {
             Image(
                 painter = painterResource(R.drawable.reverso_mark),

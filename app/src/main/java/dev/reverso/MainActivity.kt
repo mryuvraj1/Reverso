@@ -38,6 +38,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -692,27 +693,66 @@ private fun fileIconFor(name: String) = when (name.substringAfterLast('.', "").l
 
 @Composable private fun Header(title: String?, sidebarVisible: Boolean, showSplit: Boolean, onToggleSidebar: () -> Unit, onHome: () -> Unit, onOpen: () -> Unit, onSave: () -> Unit, onSaveAs: () -> Unit, onFind: () -> Unit, onSplit: () -> Unit, onToggleBottom: () -> Unit) {
     var saveMenuOpen by remember { mutableStateOf(false) }
-    Row(Modifier.fillMaxWidth().height(58.dp).background(ReversoColors.Surface).padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = onToggleSidebar) { Icon(if (sidebarVisible) Icons.Filled.MenuOpen else Icons.Filled.Menu, "Toggle sidebar", tint = if (sidebarVisible) ReversoColors.Blue else ReversoColors.Muted) }
-        ReversoMark(36.dp, Modifier.clickable(onClick = onHome)); Spacer(Modifier.width(9.dp))
-        Column(Modifier.weight(1f).clickable(onClick = onHome)) { Text("REVERSO", style = MaterialTheme.typography.titleMedium, letterSpacing = 1.3.sp); Text(title ?: "Code anywhere · Build everything", color = ReversoColors.Muted, style = MaterialTheme.typography.labelSmall, maxLines = 1) }
-        IconButton(onClick = onOpen) { Icon(Icons.Filled.FolderOpen, "Open file", tint = ReversoColors.Muted) }
-        Box {
-            IconButton(onClick = { saveMenuOpen = true }) { Icon(Icons.Filled.Save, "Save options", tint = ReversoColors.Muted) }
-            DropdownMenu(expanded = saveMenuOpen, onDismissRequest = { saveMenuOpen = false }) {
-                DropdownMenuItem(text = { Text("Save") }, onClick = { saveMenuOpen = false; onSave() })
-                DropdownMenuItem(text = { Text("Save As…") }, onClick = { saveMenuOpen = false; onSaveAs() })
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val compact = maxWidth < 420.dp
+        Row(Modifier.fillMaxWidth().height(58.dp).background(ReversoColors.Surface).padding(horizontal = if (compact) 4.dp else 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onToggleSidebar, modifier = Modifier.size(42.dp)) { Icon(if (sidebarVisible) Icons.Filled.MenuOpen else Icons.Filled.Menu, "Toggle sidebar", tint = if (sidebarVisible) ReversoColors.Blue else ReversoColors.Muted) }
+            ReversoMark(if (compact) 32.dp else 36.dp, Modifier.clickable(onClick = onHome)); Spacer(Modifier.width(8.dp))
+            Column(Modifier.weight(1f).clickable(onClick = onHome)) {
+                Text("REVERSO", style = MaterialTheme.typography.titleMedium, letterSpacing = 1.2.sp, maxLines = 1)
+                Text(title ?: "Code anywhere · Build everything", color = ReversoColors.Muted, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            if (compact) {
+                Box {
+                    IconButton(onClick = { saveMenuOpen = true }, modifier = Modifier.size(42.dp)) { Icon(Icons.Filled.MoreVert, "Editor actions", tint = ReversoColors.Ink) }
+                    DropdownMenu(expanded = saveMenuOpen, onDismissRequest = { saveMenuOpen = false }) {
+                        DropdownMenuItem(text = { Text("Open file") }, leadingIcon = { Icon(Icons.Filled.FolderOpen, null) }, onClick = { saveMenuOpen = false; onOpen() })
+                        DropdownMenuItem(text = { Text("Save") }, leadingIcon = { Icon(Icons.Filled.Save, null) }, onClick = { saveMenuOpen = false; onSave() })
+                        DropdownMenuItem(text = { Text("Save As…") }, onClick = { saveMenuOpen = false; onSaveAs() })
+                        DropdownMenuItem(text = { Text("Find") }, leadingIcon = { Icon(Icons.Filled.Search, null) }, onClick = { saveMenuOpen = false; onFind() })
+                        if (showSplit) DropdownMenuItem(text = { Text("Split editor") }, leadingIcon = { Icon(Icons.Filled.CallSplit, null) }, onClick = { saveMenuOpen = false; onSplit() })
+                        DropdownMenuItem(text = { Text("Toggle developer panel") }, leadingIcon = { Icon(Icons.Filled.Terminal, null) }, onClick = { saveMenuOpen = false; onToggleBottom() })
+                    }
+                }
+            } else {
+                IconButton(onClick = onOpen) { Icon(Icons.Filled.FolderOpen, "Open file", tint = ReversoColors.Muted) }
+                Box {
+                    IconButton(onClick = { saveMenuOpen = true }) { Icon(Icons.Filled.Save, "Save options", tint = ReversoColors.Muted) }
+                    DropdownMenu(expanded = saveMenuOpen, onDismissRequest = { saveMenuOpen = false }) {
+                        DropdownMenuItem(text = { Text("Save") }, onClick = { saveMenuOpen = false; onSave() })
+                        DropdownMenuItem(text = { Text("Save As…") }, onClick = { saveMenuOpen = false; onSaveAs() })
+                    }
+                }
+                IconButton(onClick = onFind) { Icon(Icons.Filled.Search, "Find", tint = ReversoColors.Muted) }
+                if (showSplit) IconButton(onClick = onSplit) { Icon(Icons.Filled.CallSplit, "Split editor", tint = ReversoColors.Muted) }
+                IconButton(onClick = onToggleBottom) { Icon(Icons.Filled.Terminal, "Toggle bottom panel", tint = ReversoColors.Muted) }
             }
         }
-        IconButton(onClick = onFind) { Icon(Icons.Filled.Search, "Find", tint = ReversoColors.Muted) }
-        if (showSplit) IconButton(onClick = onSplit) { Icon(Icons.Filled.CallSplit, "Split editor", tint = ReversoColors.Muted) }
-        IconButton(onClick = onToggleBottom) { Icon(Icons.Filled.Terminal, "Toggle bottom panel", tint = ReversoColors.Muted) }
+        HorizontalDivider(Modifier.align(Alignment.BottomCenter), color = ReversoColors.Border)
     }
 }
 
 @Composable private fun ActivityRail(selected: IdeActivity, onSelect: (IdeActivity) -> Unit) {
-    Column(Modifier.width(54.dp).fillMaxHeight().background(ReversoColors.Surface), horizontalAlignment = Alignment.CenterHorizontally) {
-        IdeActivity.entries.forEach { item -> val icon = activityIcon(item); IconButton(onClick = { onSelect(item) }, modifier = Modifier.padding(vertical = 2.dp)) { Icon(icon, item.label, tint = if (selected == item) ReversoColors.Blue else ReversoColors.Muted) } }
+    Column(Modifier.width(56.dp).fillMaxHeight().background(ReversoColors.Surface), horizontalAlignment = Alignment.CenterHorizontally) {
+        Spacer(Modifier.height(10.dp))
+        ReversoMark(32.dp)
+        Spacer(Modifier.height(10.dp))
+        HorizontalDivider(Modifier.padding(horizontal = 12.dp), color = ReversoColors.Border)
+        Spacer(Modifier.height(8.dp))
+        IdeActivity.entries.forEach { item ->
+            val selectedItem = selected == item
+            Row(Modifier.fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.width(3.dp).height(25.dp).background(if (selectedItem) ReversoColors.Blue else Color.Transparent, RoundedCornerShape(topEnd = 3.dp, bottomEnd = 3.dp)))
+                Surface(
+                    onClick = { onSelect(item) },
+                    color = if (selectedItem) ReversoColors.Raised else Color.Transparent,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.padding(start = 5.dp, end = 6.dp).size(40.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center) { Icon(activityIcon(item), item.label, tint = if (selectedItem) ReversoColors.Blue else ReversoColors.Muted, modifier = Modifier.size(21.dp)) }
+                }
+            }
+        }
     }
 }
 
@@ -800,8 +840,16 @@ private fun activityIcon(item: IdeActivity) = when (item) {
 }
 
 @Composable private fun SidePanel(activity: IdeActivity, workspace: String?, items: List<WorkspaceItem<DocumentFile>>, tabs: List<EditorTab>, activeId: String?, query: String, onQuery: (String) -> Unit, onOpenFolder: () -> Unit, onOpenFile: () -> Unit, onCreateFile: () -> Unit, onCreateFolder: () -> Unit, onFile: (WorkspaceItem<DocumentFile>) -> Unit, onOperation: (DocumentFile, WorkspaceFileAction) -> Unit, onRefresh: () -> Unit, onTab: (EditorTab) -> Unit, modifier: Modifier = Modifier) {
-    Column(modifier.fillMaxHeight().background(ReversoColors.Surface).padding(horizontal = 10.dp)) {
-        Row(Modifier.fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically) { Text(if (activity == IdeActivity.SEARCH) "SEARCH" else "EXPLORER", Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, color = ReversoColors.Muted, letterSpacing = 1.sp); if (activity == IdeActivity.EXPLORER) { IconButton(onClick = onRefresh) { Icon(Icons.Filled.Refresh, "Refresh files") }; IconButton(onClick = onCreateFile) { Icon(Icons.Filled.NoteAdd, "New file") }; IconButton(onClick = onCreateFolder) { Icon(Icons.Filled.CreateNewFolder, "New folder") } } }
+    Column(modifier.fillMaxHeight().background(ReversoColors.Panel).padding(horizontal = 10.dp)) {
+        Row(Modifier.fillMaxWidth().height(50.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(if (activity == IdeActivity.SEARCH) "SEARCH" else "EXPLORER", Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, color = ReversoColors.Ink, letterSpacing = 1.1.sp)
+            if (activity == IdeActivity.EXPLORER) {
+                IconButton(onClick = onRefresh, modifier = Modifier.size(36.dp)) { Icon(Icons.Filled.Refresh, "Refresh files", tint = ReversoColors.Muted, modifier = Modifier.size(18.dp)) }
+                IconButton(onClick = onCreateFile, modifier = Modifier.size(36.dp)) { Icon(Icons.Filled.NoteAdd, "New file", tint = ReversoColors.Muted, modifier = Modifier.size(18.dp)) }
+                IconButton(onClick = onCreateFolder, modifier = Modifier.size(36.dp)) { Icon(Icons.Filled.CreateNewFolder, "New folder", tint = ReversoColors.Muted, modifier = Modifier.size(18.dp)) }
+            }
+        }
+        HorizontalDivider(color = ReversoColors.Border)
         if (activity == IdeActivity.SEARCH) {
             OutlinedTextField(query, onQuery, Modifier.fillMaxWidth(), placeholder = { Text("Search open files") }, singleLine = true)
             LazyColumn { if (query.isNotBlank()) tabs.forEach { tab ->
@@ -815,10 +863,12 @@ private fun activityIcon(item: IdeActivity) = when (item) {
             } }
         }
         else {
-            TextButton(onClick = onOpenFolder, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Filled.FolderOpen, null); Spacer(Modifier.width(8.dp)); Text(workspace ?: "Open Workspace", maxLines = 1) }
-            Text("OPEN EDITORS", color = ReversoColors.Muted, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(start = 8.dp, top = 12.dp, bottom = 4.dp))
-            tabs.forEach { tab -> TextButton(onClick = { onTab(tab) }, modifier = Modifier.fillMaxWidth()) { Text((if (tab.dirty) "● " else "") + tab.title, color = if (tab.id == activeId) ReversoColors.Ink else ReversoColors.Muted, maxLines = 1) } }
-            Text("WORKSPACE", color = ReversoColors.Muted, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(start = 8.dp, top = 12.dp, bottom = 4.dp))
+            Surface(onClick = onOpenFolder, color = ReversoColors.Raised, shape = RoundedCornerShape(9.dp), modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                Row(Modifier.padding(horizontal = 10.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Filled.FolderOpen, null, tint = ReversoColors.Blue, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(workspace ?: "Open Workspace", color = ReversoColors.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall) }
+            }
+            Text("OPEN EDITORS", color = ReversoColors.Muted, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(start = 8.dp, top = 14.dp, bottom = 4.dp))
+            tabs.forEach { tab -> TextButton(onClick = { onTab(tab) }, modifier = Modifier.fillMaxWidth().heightIn(min = 36.dp), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)) { Icon(fileIconFor(tab.title), null, tint = if (tab.id == activeId) ReversoColors.Blue else ReversoColors.Muted, modifier = Modifier.size(16.dp)); Text((if (tab.dirty) "● " else "  ") + tab.title, Modifier.padding(start = 8.dp), color = if (tab.id == activeId) ReversoColors.Ink else ReversoColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis) } }
+            Text("WORKSPACE", color = ReversoColors.Muted, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(start = 8.dp, top = 14.dp, bottom = 4.dp))
             if (items.isEmpty()) Text("Choose a folder to see its files", color = ReversoColors.Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(8.dp))
             LazyColumn { items(items, key = { it.id }) { item ->
                 var menuOpen by remember(item.id) { mutableStateOf(false) }
@@ -945,10 +995,22 @@ private fun activityIcon(item: IdeActivity) = when (item) {
 
 @Composable private fun BottomPanel(tool: BottomTool, output: List<String>, modifier: Modifier, onTool: (BottomTool) -> Unit, onClose: () -> Unit, onDrag: (Float) -> Unit) {
     Column(modifier.fillMaxWidth().background(ReversoColors.Surface)) {
-        Box(Modifier.fillMaxWidth().height(18.dp).pointerInput(Unit) { detectVerticalDragGestures { _, drag -> onDrag(drag) } }, contentAlignment = Alignment.Center) {
-            Box(Modifier.width(42.dp).height(3.dp).background(ReversoColors.Muted, RoundedCornerShape(2.dp)))
+        Box(Modifier.fillMaxWidth().height(18.dp).background(ReversoColors.Background).pointerInput(Unit) { detectVerticalDragGestures { _, drag -> onDrag(drag) } }, contentAlignment = Alignment.Center) {
+            Box(Modifier.width(40.dp).height(4.dp).background(ReversoColors.Muted.copy(alpha = 0.8f), RoundedCornerShape(2.dp)))
         }
-        Row(Modifier.fillMaxWidth().height(44.dp).horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) { BottomTool.entries.forEach { TextButton(onClick = { onTool(it) }) { Text(it.label, color = if (tool == it) ReversoColors.Blue else ReversoColors.Muted) } }; Spacer(Modifier.weight(1f)); IconButton(onClick = onClose) { Icon(Icons.Filled.Close, "Close panel") } }
+        Row(Modifier.fillMaxWidth().height(46.dp).horizontalScroll(rememberScrollState()).background(ReversoColors.Surface), verticalAlignment = Alignment.CenterVertically) {
+            BottomTool.entries.forEach { item ->
+                val selected = item == tool
+                Column(Modifier.widthIn(min = 72.dp).fillMaxHeight().clickable { onTool(item) }.padding(horizontal = 10.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                    Text(item.label.uppercase(), color = if (selected) ReversoColors.Ink else ReversoColors.Muted, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                    Spacer(Modifier.height(4.dp))
+                    Box(Modifier.fillMaxWidth().height(2.dp).background(if (selected) ReversoColors.Blue else Color.Transparent, RoundedCornerShape(2.dp)))
+                }
+            }
+            Spacer(Modifier.weight(1f))
+            IconButton(onClick = onClose) { Icon(Icons.Filled.Close, "Close developer panel", tint = ReversoColors.Muted) }
+        }
+        HorizontalDivider(color = ReversoColors.Border)
         when (tool) {
             BottomTool.OUTPUT -> LazyColumn(Modifier.weight(1f, fill = false).padding(horizontal = 12.dp)) { items(output) { Text(it, color = ReversoColors.Muted, style = MaterialTheme.typography.bodySmall) } }
             BottomTool.PROBLEMS -> Text("No language server is connected. Diagnostics are unavailable.", Modifier.padding(12.dp), color = ReversoColors.Muted)

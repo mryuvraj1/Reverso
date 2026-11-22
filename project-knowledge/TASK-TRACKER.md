@@ -23,3 +23,4 @@
 - [x] Polish the in-use Reverso logo, enforce sans-serif typography, add release channel/GitHub link controls, preserve dismissals and show APK byte progress.
 - [x] Build the revised APK and run Android unit tests/lint plus Rust checks in CI (run 44999601869, commit `a275167`); CI uploaded `reverso-android-debug-apk`.
 - [ ] Install, launch, and visually compare this revised APK; current `adb devices` is empty and `pm list packages` shows Reverso is not installed in this environment. A connected Android device is required.
+- [ ] Build the compact-header, Explorer/rail/panel polish and versionCode 2 APK in CI; this is the current code revision.
