@@ -31,3 +31,7 @@ Added JGit-backed GitHub clone and source control for app-private managed reposi
 ## 2026-11-22 — JGit API compatibility correction
 
 Updated remote URL snapshotting to call JGit's public `getURIs()` accessor after CI caught that the `uris` field is private.
+
+## 2026-11-22 — Unborn Git repository support
+
+Git snapshots now return an empty history before the first commit, matching Git's unborn-branch state.

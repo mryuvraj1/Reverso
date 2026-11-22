@@ -6,6 +6,7 @@ import android.security.keystore.KeyProperties
 import android.util.Base64
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.api.errors.GitAPIException
+import org.eclipse.jgit.api.errors.NoHeadException
 import org.eclipse.jgit.lib.ProgressMonitor
 import org.eclipse.jgit.transport.CredentialsProvider
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider
@@ -72,8 +73,12 @@ internal object GitRepository {
         }.distinctBy { it.path to it.kind }.sortedBy { it.path.lowercase() }
         val branches = git.branchList().call().map { it.name.removePrefix("refs/heads/") }.sorted()
         val remotes = git.remoteList().call().associate { it.name to (it.getURIs().firstOrNull()?.toString() ?: "") }
-        val history = git.log().setMaxCount(40).call().map { commit ->
-            GitCommit(commit.name, commit.shortMessage, commit.authorIdent.name, commit.commitTime)
+        val history = try {
+            git.log().setMaxCount(40).call().map { commit ->
+                GitCommit(commit.name, commit.shortMessage, commit.authorIdent.name, commit.commitTime)
+            }
+        } catch (_: NoHeadException) {
+            emptyList()
         }
         GitSnapshot(git.repository.branch ?: "(detached HEAD)", changes, branches, remotes, history)
     }

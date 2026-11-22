@@ -26,3 +26,5 @@
 - Documented the SAF Git limitation and that the terminal panel does not yet provide interactive Termux execution.
 
 - Fixed compilation against JGit's public remote URI accessor.
+
+- Handle repositories with no initial commit in Git status/history.

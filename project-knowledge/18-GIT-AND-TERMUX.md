@@ -16,7 +16,7 @@ These are internal Kotlin service operations, not HTTP endpoints. Network traffi
 |---|---|---|---|
 | `validateCloneUrl` | URL string | `null` when accepted | Human-readable validation message |
 | `clone` | Android context, HTTPS URL, destination folder, optional token | app-private repo directory | Rejects invalid/duplicate names, deletes partial clone, throws a user-visible operation error |
-| `snapshot` | managed repo directory | branch, changed paths, remotes, branch list, up to 40 commits | Invalid repository or JGit error returned to UI |
+| `snapshot` | managed repo directory | branch, changed paths, remotes, branch list, up to 40 commits (empty history for an unborn branch) | Invalid repository or JGit error returned to UI |
 | `stage` / `unstage` / `stageAll` | repo directory and optional relative path | updates Git index | validates relative paths; reports Git/JGit errors |
 | `commit` | repo directory, message and author name/email | commit object ID | requires staged content and valid fields; JGit errors shown in UI |
 | `createBranch` / `checkout` | repo directory and branch name | switches local branch | validates names/existence and reports checkout errors |
