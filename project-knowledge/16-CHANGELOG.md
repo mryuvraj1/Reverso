@@ -27,3 +27,7 @@ Implemented the official GitHub Releases update manager: stable/beta filtering, 
 ## 2026-11-22 — Git foundation and integration boundaries
 
 Added JGit-backed GitHub clone and source control for app-private managed repositories, with encrypted fine-grained token storage, status/staging/commit/branches/history/push/pull UI, and local repository tests. Added `file://` workspace I/O for those clones. Documented SAF filesystem limits and Termux RUN_COMMAND semantics; interactive terminal integration remains unimplemented. Live remote/device verification remains required.
+
+## 2026-11-22 — JGit API compatibility correction
+
+Updated remote URL snapshotting to call JGit's public `getURIs()` accessor after CI caught that the `uris` field is private.

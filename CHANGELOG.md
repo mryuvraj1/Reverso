@@ -24,3 +24,5 @@
 - Added JGit-based GitHub clone and source control for Reverso-managed app-private repositories.
 - Added encrypted fine-grained GitHub token storage and local repository operation tests.
 - Documented the SAF Git limitation and that the terminal panel does not yet provide interactive Termux execution.
+
+- Fixed compilation against JGit's public remote URI accessor.

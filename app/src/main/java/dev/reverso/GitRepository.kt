@@ -71,7 +71,7 @@ internal object GitRepository {
             status.conflicting.forEach { add(GitChange(it, GitChangeKind.CONFLICT)) }
         }.distinctBy { it.path to it.kind }.sortedBy { it.path.lowercase() }
         val branches = git.branchList().call().map { it.name.removePrefix("refs/heads/") }.sorted()
-        val remotes = git.remoteList().call().associate { it.name to (it.uris.firstOrNull()?.toString() ?: "") }
+        val remotes = git.remoteList().call().associate { it.name to (it.getURIs().firstOrNull()?.toString() ?: "") }
         val history = git.log().setMaxCount(40).call().map { commit ->
             GitCommit(commit.name, commit.shortMessage, commit.authorIdent.name, commit.commitTime)
         }
