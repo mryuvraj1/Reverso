@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Exposed update controls through the actual phone navigation, welcome screen, and Settings; polished the active Reverso logo and sans-serif dark theme. CI run 44999601869 passed Android tests/build/lint and Rust checks; the debug APK artifact is available from the workflow run. Device installation and visual comparison remain unverified.
+
 - Add official GitHub Releases update checks, stable/beta settings, WorkManager scheduling, cached release history, in-app notices and deduplicated Android notifications.
 - Add bounded universal/device-ABI-compatible APK downloads, GitHub SHA-256 verification when supplied, and explicit user-confirmed Android installer handoff; report releases without APK assets as source-only.
 - Preserve exact source filenames and add SAF-backed project storage/file operations (see current implementation notes in `project-knowledge/`).

@@ -50,3 +50,8 @@ The existing update settings were nested inside the phone-collapsed sidebar's Se
 ## 2026-11-22 — Compose API compatibility
 
 Applied sans-serif fonts per Material typography role and replaced an unavailable generated icon with the supported link icon after CI compilation identified pinned-library API differences.
+
+
+## 2026-11-22 — UI/update build verification
+
+CI run [44999601869](https://github.com/mryuvraj1/Reverso/actions/runs/44999601869) passed Android unit tests, debug APK assembly and lint, plus Rust formatting/tests/Clippy, for commit `a275167`. The run uploaded `reverso-android-debug-apk` containing `app-debug.apk`. No Android device was attached, so install, launch and screenshot comparison remain unverified.
