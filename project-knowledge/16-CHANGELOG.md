@@ -46,3 +46,7 @@ Traced the launcher `MainActivity` and phone navigation. Moved release preferenc
 
 
 The existing update settings were nested inside the phone-collapsed sidebar's Settings page. The user-visible route is now a dedicated Updates activity and welcome action, with a Settings shortcut. Dismissing an update dialog now stores the remind-later tag.
+
+## 2026-11-22 — Compose API compatibility
+
+Applied sans-serif fonts per Material typography role and replaced an unavailable generated icon with the supported link icon after CI compilation identified pinned-library API differences.

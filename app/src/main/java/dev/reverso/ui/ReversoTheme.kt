@@ -21,6 +21,25 @@ object ReversoColors {
     val Warning = Color(0xFFFFC66D)
 }
 
+private val DefaultTypography = Typography()
+private val ReversoTypography = DefaultTypography.copy(
+    displayLarge = DefaultTypography.displayLarge.copy(fontFamily = FontFamily.SansSerif),
+    displayMedium = DefaultTypography.displayMedium.copy(fontFamily = FontFamily.SansSerif),
+    displaySmall = DefaultTypography.displaySmall.copy(fontFamily = FontFamily.SansSerif),
+    headlineLarge = DefaultTypography.headlineLarge.copy(fontFamily = FontFamily.SansSerif),
+    headlineMedium = DefaultTypography.headlineMedium.copy(fontFamily = FontFamily.SansSerif),
+    headlineSmall = DefaultTypography.headlineSmall.copy(fontFamily = FontFamily.SansSerif),
+    titleLarge = DefaultTypography.titleLarge.copy(fontFamily = FontFamily.SansSerif),
+    titleMedium = DefaultTypography.titleMedium.copy(fontFamily = FontFamily.SansSerif),
+    titleSmall = DefaultTypography.titleSmall.copy(fontFamily = FontFamily.SansSerif),
+    bodyLarge = DefaultTypography.bodyLarge.copy(fontFamily = FontFamily.SansSerif),
+    bodyMedium = DefaultTypography.bodyMedium.copy(fontFamily = FontFamily.SansSerif),
+    bodySmall = DefaultTypography.bodySmall.copy(fontFamily = FontFamily.SansSerif),
+    labelLarge = DefaultTypography.labelLarge.copy(fontFamily = FontFamily.SansSerif),
+    labelMedium = DefaultTypography.labelMedium.copy(fontFamily = FontFamily.SansSerif),
+    labelSmall = DefaultTypography.labelSmall.copy(fontFamily = FontFamily.SansSerif),
+)
+
 @Composable
 fun ReversoTheme(content: @Composable () -> Unit) {
     MaterialTheme(
@@ -35,7 +54,7 @@ fun ReversoTheme(content: @Composable () -> Unit) {
             onSurface = ReversoColors.Ink,
             onSurfaceVariant = ReversoColors.Muted,
         ),
-        typography = Typography(defaultFontFamily = FontFamily.SansSerif),
+        typography = ReversoTypography,
         content = content,
     )
 }

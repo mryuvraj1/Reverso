@@ -2,6 +2,7 @@ package dev.reverso.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -75,7 +76,7 @@ internal fun UpdateSettingsScreen(
             }
         }
         OutlinedButton(onClick = { runCatching { uriHandler.openUri("https://github.com/mryuvraj1/Reverso/releases") } }, modifier = Modifier.fillMaxWidth()) {
-            Icon(Icons.Filled.OpenInNew, null, tint = ReversoColors.Blue)
+            Icon(Icons.Filled.Link, null, tint = ReversoColors.Blue)
             Text("  View on GitHub")
         }
     }
