@@ -16,4 +16,5 @@
 - [ ] Connect Android editor to Rust through JNI and establish offset conversion tests.
 - [ ] Add Android instrumentation/device tests for SAF, sidebar/panel gestures, orientation, keyboard, and Keystore.
 - [x] Add JGit-backed GitHub clone and Git status/staging/commit/branch/history/push/pull for app-private clones; live remote operations, device Keystore validation, OAuth/device flow, remote management and SAF Git support remain incomplete.
+- [x] Run CI for JGit foundation: run 44997689939 passed Rust fmt/test/clippy and Android unit tests/build/lint; device and live remote checks remain pending.
 - [ ] Implement a supported authenticated interactive Termux session bridge. RUN_COMMAND was investigated but provides one-shot command/result semantics rather than a live terminal; Reverso currently does not invoke it.

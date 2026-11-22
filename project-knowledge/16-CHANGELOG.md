@@ -35,3 +35,7 @@ Updated remote URL snapshotting to call JGit's public `getURIs()` accessor after
 ## 2026-11-22 — Unborn Git repository support
 
 Git snapshots now return an empty history before the first commit, matching Git's unborn-branch state.
+
+## 2026-11-22 — Git foundation CI verification
+
+CI run 44997689939 passed Rust formatting/tests/Clippy and Android unit tests/build/lint for commit `977905c`, including the new JGit real-local-repository tests; CI uploaded a debug APK. Live GitHub network operations and Android device workflows remain unverified.

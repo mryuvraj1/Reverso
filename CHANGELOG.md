@@ -28,3 +28,5 @@
 - Fixed compilation against JGit's public remote URI accessor.
 
 - Handle repositories with no initial commit in Git status/history.
+
+- CI run 44997689939 passed Rust checks, Android tests/build/lint, and uploaded a debug APK.
