@@ -23,3 +23,7 @@ Documented Reverso branding, responsive navigation, workspace tree, file editing
 ## 2026-11-22
 
 Implemented the official GitHub Releases update manager: stable/beta filtering, launch and periodic checks, cached release history, settings, Android notification channel and deduplication, bounded official APK download, SHA-256 verification when provided, source-only reporting, and Android installer handoff with explicit user confirmation. Added release selection/cache/checksum and ABI asset-selection tests and update architecture/security documentation. CI run 44947324260 passed Rust formatting/tests/Clippy and Android unit-test/build/lint jobs, including supported/incompatible ABI asset selection. A debug APK was uploaded. Device-level network, notification, APK download and installer verification remains pending.
+
+## 2026-11-22 — Git foundation and integration boundaries
+
+Added JGit-backed GitHub clone and source control for app-private managed repositories, with encrypted fine-grained token storage, status/staging/commit/branches/history/push/pull UI, and local repository tests. Added `file://` workspace I/O for those clones. Documented SAF filesystem limits and Termux RUN_COMMAND semantics; interactive terminal integration remains unimplemented. Live remote/device verification remains required.

@@ -18,3 +18,9 @@
 - Added provider-specific endpoint/model preferences and AES-GCM encrypted API keys backed by Android Keystore; code context is opt-in and capped.
 - Added in-memory New Chat and an explicit confirmation before an AI response replaces the active file buffer.
 - Added AI endpoint/config/context tests and updated engineering/security documentation.
+
+## 0.1.0 — 2026-11-22
+
+- Added JGit-based GitHub clone and source control for Reverso-managed app-private repositories.
+- Added encrypted fine-grained GitHub token storage and local repository operation tests.
+- Documented the SAF Git limitation and that the terminal panel does not yet provide interactive Termux execution.

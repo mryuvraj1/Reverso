@@ -16,6 +16,10 @@ Provider billing, data handling and retention are governed by the provider accou
 
 The app makes unauthenticated HTTPS requests only to the fixed public GitHub Releases API and validates release/asset origins. APK downloads are bounded and checked against GitHub SHA-256 when available; absent digest requires user acknowledgement. APKs stay in app cache behind a non-exported FileProvider. Android controls unknown-source permission, package signature validation and final installation confirmation. Details: [17-UPDATE-SYSTEM.md](17-UPDATE-SYSTEM.md).
 
-## Unavailable backends
+## GitHub credentials and Git operations
 
-There is no Termux command bridge, cloud execution, Git implementation, debugger, or extension loader. Future execution/extension work must establish authentication, isolation and permissions before exposing commands or untrusted code.
+The Git panel accepts a user-entered GitHub fine-grained personal access token for private clone/push/pull. It encrypts the trimmed token with AES-GCM and a non-exportable Android Keystore key; ciphertext is stored in app-private preferences. There is no OAuth/device authorization flow yet. The token is passed only to JGit's HTTPS credential provider and is not included in repository URLs or UI logs. Users should grant only selected repository Contents permissions. Git operations apply only to repos cloned under the app-private `filesDir/git-repositories` directory. SAF workspaces are not assumed to be filesystem paths. Clone URLs are restricted to credential-free HTTPS GitHub owner/repository URLs.
+
+## Terminal and unavailable backends
+
+There is no interactive Termux bridge, cloud execution, debugger, or extension loader. The Termux RUN_COMMAND API requires explicit user-granted `com.termux.permission.RUN_COMMAND` and Termux's `allow-external-apps=true`; it can start a command, but its Java result callback returns after completion and foreground results are a bounded transcript. That is not a live interactive terminal protocol. Reverso currently does not invoke it. Future execution/extension work must establish authentication, isolation and permissions before exposing commands or untrusted code.

@@ -29,3 +29,8 @@ Requests use connection/read timeouts and response-size limits. Provider HTTP fa
 The app checks the official releases API on launch when automatic checks are enabled and WorkManager schedules network-constrained periodic checks. Reverso caches release history and timestamp, applies stable/beta preferences and shows release notes for a newer version. A user can request a bounded APK download; the app checks the GitHub checksum when present and asks the user to continue if the digest is absent, then opens Android's package installer. Android owns final signature verification and confirmation. See [17-UPDATE-SYSTEM.md](17-UPDATE-SYSTEM.md).
 
 The Rust crates implement UTF-8-safe editing separately. Android does not call the Rust engine through JNI yet.
+
+
+## Git workflow
+
+The Source Control destination can clone a validated HTTPS GitHub repository into Reverso's private app workspace. The new repo is opened and remembered. JGit performs status, stage/unstage, commit, local branch create/switch, history, pull and push. User-entered GitHub fine-grained tokens are encrypted with Android Keystore. SAF workspaces continue to be stored through their document URIs and are not assumed to be JGit-compatible filesystem directories. See [18-GIT-AND-TERMUX.md](18-GIT-AND-TERMUX.md).

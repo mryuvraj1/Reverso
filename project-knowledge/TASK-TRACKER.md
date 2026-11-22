@@ -15,4 +15,5 @@
 - [x] Run Android and Rust CI for the update-service revision (GitHub Actions run 44947324260); Android SDK is unavailable locally. Device verification with SAF providers, update notifications, APK download/installation and live provider credentials remains required.
 - [ ] Connect Android editor to Rust through JNI and establish offset conversion tests.
 - [ ] Add Android instrumentation/device tests for SAF, sidebar/panel gestures, orientation, keyboard, and Keystore.
-- [ ] Implement supported authenticated Termux interactive session integration and Git in Phase 2.
+- [x] Add JGit-backed GitHub clone and Git status/staging/commit/branch/history/push/pull for app-private clones; live remote operations, device Keystore validation, OAuth/device flow, remote management and SAF Git support remain incomplete.
+- [ ] Implement a supported authenticated interactive Termux session bridge. RUN_COMMAND was investigated but provides one-shot command/result semantics rather than a live terminal; Reverso currently does not invoke it.

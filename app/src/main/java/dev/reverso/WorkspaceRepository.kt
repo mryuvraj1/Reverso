@@ -6,6 +6,11 @@ import android.provider.DocumentsContract
 import androidx.documentfile.provider.DocumentFile
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.io.InputStream
+import java.io.OutputStream
 
 internal object RecentProjects {
     private const val PREFS = "reverso-workspaces"
@@ -16,27 +21,44 @@ internal object RecentProjects {
         val array = JSONArray(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, "[]"))
         (0 until array.length()).mapNotNull { index ->
             array.optJSONObject(index)?.let {
-                RecentProject(it.optString("name"), it.optString("uri"), it.optString("child_name").takeIf(String::isNotBlank))
+                RecentProject(
+                    it.optString("name"),
+                    it.optString("uri"),
+                    it.optString("child_name").takeIf(String::isNotBlank),
+                    it.optString("internal_path").takeIf(String::isNotBlank),
+                )
             }
-                ?.takeIf { it.name.isNotBlank() && it.uri.isNotBlank() }
+                ?.takeIf { it.name.isNotBlank() && (it.uri.isNotBlank() || it.internalPath != null) }
         }
     }.getOrDefault(emptyList())
 
     fun remember(context: Context, project: RecentProject) {
-        val items = (listOf(project) + load(context).filterNot { it.uri == project.uri && it.childName == project.childName }).take(MAX_RECENTS)
+        val items = (listOf(project) + load(context).filterNot {
+            if (project.internalPath != null) it.internalPath == project.internalPath
+            else it.internalPath == null && it.uri == project.uri && it.childName == project.childName
+        }).take(MAX_RECENTS)
         val json = JSONArray().apply {
-            items.forEach { put(JSONObject().put("name", it.name).put("uri", it.uri).put("child_name", it.childName)) }
+            items.forEach { put(JSONObject().put("name", it.name).put("uri", it.uri).put("child_name", it.childName).put("internal_path", it.internalPath)) }
         }
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY, json.toString()).apply()
     }
 
     fun open(context: Context, recent: RecentProject): ProjectWorkspace? = runCatching {
+        recent.internalPath?.let { relativePath ->
+            val directory = GitRepository.repositoryDirectory(context, relativePath) ?: return null
+            val document = DocumentFile.fromFile(directory)
+            return ProjectWorkspace(document.uri, document, recent.name)
+        }
         val treeUri = Uri.parse(recent.uri)
         val selectedTree = DocumentFile.fromTreeUri(context, treeUri)?.takeIf { it.exists() && it.isDirectory } ?: return null
         val root = recent.childName?.let(selectedTree::findFile) ?: selectedTree
         if (!root.exists() || !root.isDirectory) return null
         ProjectWorkspace(root.uri, root, recent.name, treeUri)
     }.getOrNull()
+
+    fun rememberInternal(context: Context, name: String) {
+        remember(context, RecentProject(name = name, uri = "", internalPath = name))
+    }
 }
 
 internal fun validateDocumentName(name: String): String? = when {
@@ -45,6 +67,14 @@ internal fun validateDocumentName(name: String): String? = when {
     name.any { it == '/' || it == '\\' || it.code < 32 || it.code == 127 } -> "Names cannot contain path separators or control characters"
     else -> null
 }
+
+internal fun openWorkspaceInput(context: Context, uri: Uri): InputStream? =
+    if (uri.scheme == "file") uri.path?.let(::File)?.takeIf { it.isFile }?.let(::FileInputStream)
+    else context.contentResolver.openInputStream(uri)
+
+internal fun openWorkspaceOutput(context: Context, uri: Uri): OutputStream? =
+    if (uri.scheme == "file") uri.path?.let(::File)?.takeIf { it.isFile }?.let(::FileOutputStream)
+    else context.contentResolver.openOutputStream(uri, "wt")
 
 internal fun mimeForDocumentName(name: String): String {
     val extension = name.substringAfterLast('.', "").lowercase()
@@ -80,6 +110,7 @@ internal fun performWorkspaceFileAction(
     name: String? = null,
     destination: DocumentFile? = null,
 ): DocumentFile? {
+    if (source.uri.scheme == "file") return performInternalFileAction(source, action, name, destination)
     when (action) {
         WorkspaceFileAction.RENAME -> {
             val newName = requireNotNull(name)
@@ -114,6 +145,52 @@ internal fun performWorkspaceFileAction(
             } ?: error("The storage provider does not support ${action.name.lowercase()}")
             return DocumentFile.fromSingleUri(context, resultUri)
                 ?: error("The resulting document could not be reopened")
+        }
+    }
+}
+
+private fun performInternalFileAction(
+    sourceDocument: DocumentFile,
+    action: WorkspaceFileAction,
+    name: String?,
+    destination: DocumentFile?,
+): DocumentFile? {
+    val source = sourceDocument.uri.path?.let(::File)?.canonicalFile ?: error("Invalid internal source file")
+    when (action) {
+        WorkspaceFileAction.RENAME -> {
+            val newName = requireNotNull(name)
+            validateDocumentName(newName)?.let { error(it) }
+            val target = File(source.parentFile, newName)
+            require(!target.exists()) { "A file or folder named $newName already exists" }
+            require(source.renameTo(target)) { "Could not rename this file" }
+            return DocumentFile.fromFile(target)
+        }
+        WorkspaceFileAction.DELETE -> {
+            require(source.deleteRecursively()) { "Could not delete this file or folder" }
+            return null
+        }
+        WorkspaceFileAction.COPY, WorkspaceFileAction.MOVE -> {
+            val targetDirectory = requireNotNull(destination).uri.path?.let(::File)?.canonicalFile
+                ?: error("Choose a valid destination folder")
+            require(targetDirectory.isDirectory && targetDirectory != source) { "Choose a different destination folder" }
+            require(!targetDirectory.toPath().startsWith(source.toPath())) { "A folder cannot be moved or copied into itself" }
+            val target = File(targetDirectory, source.name)
+            require(!target.exists()) { "The destination already contains ${source.name}" }
+            if (action == WorkspaceFileAction.MOVE) {
+                require(source.renameTo(target)) { "Could not move this file between internal folders" }
+            } else copyInternalFile(source, target)
+            return DocumentFile.fromFile(target)
+        }
+    }
+}
+
+private fun copyInternalFile(source: File, target: File) {
+    if (source.isDirectory) {
+        require(target.mkdirs()) { "Could not create copied folder ${target.name}" }
+        source.listFiles()?.forEach { child -> copyInternalFile(child, File(target, child.name)) }
+    } else {
+        source.inputStream().buffered().use { input ->
+            FileOutputStream(target).buffered().use { output -> input.copyTo(output) }
         }
     }
 }

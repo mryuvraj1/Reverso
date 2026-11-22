@@ -10,7 +10,7 @@ The responsive layout defaults to a hidden sidebar on phones and a visible sideb
 
 SAF actions create/open/save real user-selected files and folders. A project picker grants a parent tree URI; project creation creates a child directory there and persists both the grant URI and child name so the project can be restored after restart. Save As uses the tab's actual display name and wildcard MIME so Android does not infer a `.txt` suffix. New files use an extension-derived MIME type and keep the user's exact name. Ctrl+S and Ctrl+Shift+S save and Save As; Ctrl+F opens search. Explorer file actions use `DocumentFile` rename/delete and `DocumentsContract` copy/move calls, report provider failures, and expose a refresh action. AI provider configuration is shown in `AiProviderSettingsScreen`; send requests run on `Dispatchers.IO` through `AiChatClient`. The user must opt in to attach the active file (limited to 12,000 characters). AI replies are memory-only and replacing an editor buffer requires a confirmation dialog; replacement marks the tab dirty. No prompt, key, or source content is written to the application output log. Release update behavior is described in [17-UPDATE-SYSTEM.md](17-UPDATE-SYSTEM.md). The activity checks on launch, passes API work to `Dispatchers.IO`, routes release notes to the dialog and settings, and owns user-initiated download/checksum acknowledgement/install permission flows. It does not itself parse GitHub JSON or stream APK bytes.
 
-The app still does not connect the editor to Rust/JNI, Termux, Git, a debugger, a language server, an extension runtime, or port forwarding.
+The app still does not connect the editor to Rust/JNI or Termux, and has no debugger, language server, extension runtime, or port forwarding. Git support for managed clones is detailed below.
 
 ### `app/src/main/java/dev/reverso/EditorModels.kt`
 
@@ -22,7 +22,7 @@ Defines `IdeActivity`, `BottomTool`, `EditorTab`, `WorkspaceItem`, `ProjectWorks
 
 ### `app/src/main/java/dev/reverso/Versioning.kt` and `ReleaseChecker.kt`
 
-`Versioning.kt` parses and compares semantic versions including prerelease identifiers. `ReleaseChecker.kt` fetches the official repository's Releases API (up to 30 releases) without credentials, filters drafts/invalid tags and optionally prereleases, validates official release and asset URLs, picks an unambiguous compatible APK, and caches metadata/time. It applies timeouts, a 1.5 MB response cap, six-hour cache policy and one-minute request floor; errors preserve the cache. The file also owns update preferences and pure selection, deduplication, digest and fallback helpers. See the update system document for inputs, return models, failure behavior and security constraints.
+`Versioning.kt` parses and compares semantic versions including prerelease identifiers. `ReleaseChecker.kt` fetches the official repository's Releases API (up to 100 releases) without credentials, filters drafts/invalid tags and optionally prereleases, validates official release and asset URLs, picks an unambiguous compatible APK, and caches metadata/time. It applies timeouts, a 1.5 MB response cap, six-hour cache policy and one-minute request floor; errors preserve the cache. The file also owns update preferences and pure selection, deduplication, digest and fallback helpers. See the update system document for inputs, return models, failure behavior and security constraints.
 
 ### `app/src/main/java/dev/reverso/UpdateScheduler.kt`
 
@@ -73,3 +73,13 @@ Defines cursor, selection, editor state, edit errors, snapshot undo/redo, line/c
 ## Android resources and tests
 
 `app/src/main/AndroidManifest.xml` declares internet, notification and package installation request permissions plus a non-exported update APK FileProvider. `app/src/main/res/xml/update_paths.xml` scopes the provider to update cache files; `drawable/ic_update_notification.xml` supplies the notification small icon. `app/build.gradle.kts` includes WorkManager and AndroidX Core for scheduling, notifications and FileProvider. `ReleaseUpdateTest.kt` covers stable/beta selection, source-only release, duplicate-notification guard, digest helper and cached offline fallback.
+
+### `app/src/main/java/dev/reverso/GitRepository.kt`
+
+`GitRepository` validates GitHub HTTPS clone URLs and repository directory names, clones into the app-private `filesDir/git-repositories` root, snapshots JGit status/branches/remotes/history, stages and unstages relative paths, commits with explicit author details, creates/checks out local branches, and pulls/pushes the configured remote. It rejects paths escaping the managed repository and deletes incomplete clone directories on failure. `GitCredentialStore` encrypts a user-supplied fine-grained token using AES-GCM and a non-exportable Android Keystore key; no credential is placed in the remote URL. JGit requires an ordinary filesystem, so this service does not treat SAF `content://` workspaces as local repositories. Errors become bounded user-visible messages. `GitRepositoryTest` covers local repository actions; remote network and device Keystore behavior still need device verification.
+
+### `app/src/main/java/dev/reverso/ui/GitScreens.kt`
+
+`GitPanelScreen` displays repository status, changed paths, branches, commit fields, history, remote URL and token settings, while dispatching actions through `GitScreenActions`. `GitCloneDialog` accepts the GitHub HTTPS URL, folder name and optional masked fine-grained token and tells users that the clone goes to app-private storage. These composables do not perform Git/network work themselves.
+
+`WorkspaceRepository.kt` also supports `file://` streams and file operations for internal JGit clones; SAF documents continue through `ContentResolver`/`DocumentsContract`.

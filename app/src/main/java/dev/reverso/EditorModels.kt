@@ -71,4 +71,4 @@ internal data class ProjectWorkspace(
     val name: String,
     val grantTreeUri: Uri = rootUri,
 )
-internal data class RecentProject(val name: String, val uri: String, val childName: String? = null)
+internal data class RecentProject(val name: String, val uri: String, val childName: String? = null, val internalPath: String? = null)

@@ -55,6 +55,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.IOException
+import java.io.File
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -106,6 +107,16 @@ private fun ReversoApp() {
     var downloadedUpdate by remember { mutableStateOf<DownloadedUpdate?>(null) }
     var installError by remember { mutableStateOf<String?>(null) }
     var pendingInstallerPermission by remember { mutableStateOf<DownloadedUpdate?>(null) }
+    var gitSnapshot by remember { mutableStateOf<GitSnapshot?>(null) }
+    var gitLoading by remember { mutableStateOf(false) }
+    var gitProgress by remember { mutableStateOf<String?>(null) }
+    var gitError by remember { mutableStateOf<String?>(null) }
+    var cloneDialogOpen by remember { mutableStateOf(false) }
+    var gitCommitMessage by remember { mutableStateOf("") }
+    var gitBranchName by remember { mutableStateOf("") }
+    val gitConfig = remember { context.getSharedPreferences("reverso-git-config", android.content.Context.MODE_PRIVATE) }
+    var gitAuthorName by remember { mutableStateOf(gitConfig.getString("author_name", "") ?: "") }
+    var gitAuthorEmail by remember { mutableStateOf(gitConfig.getString("author_email", "") ?: "") }
     var splitMode by remember { mutableStateOf(false) }
     var aiConfig by remember { mutableStateOf(AiConfigRepository.load(context)) }
     var credentialSaved by remember { mutableStateOf(aiConfig?.let { SecureCredentialStore.has(context, it.provider) } ?: false) }
@@ -116,6 +127,8 @@ private fun ReversoApp() {
     var showApplyConfirmation by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val active = tabs.firstOrNull { it.id == activeId }
+    val gitDirectory = workspace?.root?.uri?.takeIf { it.scheme == "file" }?.path?.let(::File)
+    val managedGitWorkspace = gitDirectory?.let { GitRepository.isManagedRepository(context, it) } == true
     val currentAppVersion = ReleaseChecker.currentVersion(context)
     val latestAvailableRelease = ReleaseChecker.latestPublished(updateResult.releases, betaUpdates)
     val notificationsPermissionGranted = Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
@@ -156,6 +169,17 @@ private fun ReversoApp() {
         }
     }
 
+    LaunchedEffect(workspace?.rootUri, workspaceRevision) {
+        val root = gitDirectory
+        if (root != null && managedGitWorkspace) {
+            gitLoading = true
+            runCatching { withContext(Dispatchers.IO) { GitRepository.snapshot(root) } }
+                .onSuccess { gitSnapshot = it; gitError = null }
+                .onFailure { gitSnapshot = null; gitError = it.message ?: "Could not read Git status" }
+            gitLoading = false
+        } else gitSnapshot = null
+    }
+
     fun log(message: String) { output = (output + message).takeLast(100) }
     fun checkUpdates(force: Boolean = true) {
         if (checkingUpdates) return
@@ -188,6 +212,86 @@ private fun ReversoApp() {
         } else runCatching { context.startActivity(UpdateInstaller.installIntent(context, update.file)) }
             .onFailure { installError = it.message ?: "Android could not open the package installer" }
     }
+    fun runGitOperation(label: String, operation: (File, String?) -> Unit) {
+        val root = gitDirectory
+        if (root == null || !managedGitWorkspace) { gitError = "Git operations require a repository cloned into Reverso's private workspace"; return }
+        if (gitLoading) return
+        gitLoading = true; gitProgress = label; gitError = null
+        coroutineScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    operation(root, GitCredentialStore.get(context))
+                    GitRepository.snapshot(root)
+                }
+            }.onSuccess {
+                gitSnapshot = it; status = label
+                if (label == "Commit created") gitCommitMessage = ""
+                if (label.startsWith("Created branch ")) gitBranchName = ""
+                workspaceRevision++
+            }
+                .onFailure { gitError = it.message ?: "Git operation failed"; status = gitError.orEmpty() }
+            gitLoading = false; gitProgress = null
+        }
+    }
+    fun refreshGit() {
+        val root = gitDirectory
+        if (root == null || !managedGitWorkspace) { gitSnapshot = null; return }
+        runGitOperation("Git status refreshed") { _, _ -> }
+    }
+    fun cloneRepository(url: String, directoryName: String, token: String) {
+        GitRepository.validateCloneUrl(url)?.let { gitError = it; return }
+        GitRepository.validateDirectoryName(directoryName)?.let { gitError = it; return }
+        if (gitLoading) return
+        gitLoading = true; gitProgress = "Cloning repository…"; gitError = null
+        coroutineScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    val savedToken = GitCredentialStore.get(context)
+                    val usedToken = token.takeIf(String::isNotBlank) ?: savedToken
+                    val directory = GitRepository.clone(context, url, directoryName, usedToken)
+                    if (token.isNotBlank()) GitCredentialStore.put(context, token)
+                    val root = DocumentFile.fromFile(directory)
+                    RecentProjects.rememberInternal(context, directory.name)
+                    ProjectWorkspace(root.uri, root, directory.name)
+                }
+            }.onSuccess { opened ->
+                workspace = opened; selectedDirectory = opened.root; expandedFolders.clear()
+                recents = RecentProjects.load(context); activity = IdeActivity.EXPLORER; sidebarOverride = true
+                workspaceRevision++; status = "Cloned ${opened.name}"
+            }.onFailure { gitError = it.message ?: "Git clone failed" }
+            gitLoading = false; gitProgress = null; cloneDialogOpen = false
+        }
+    }
+    fun saveGitToken(token: String) {
+        runCatching { GitCredentialStore.put(context, token) }
+            .onSuccess { status = "GitHub token encrypted and saved" }
+            .onFailure { gitError = "Could not secure token: ${it.message ?: "Keystore error"}" }
+    }
+    val gitScreenState = GitScreenState(
+        gitSnapshot, managedGitWorkspace, GitCredentialStore.has(context), gitLoading, gitProgress, gitError,
+        gitCommitMessage, gitAuthorName, gitAuthorEmail, gitBranchName,
+    )
+    val gitScreenActions = GitScreenActions(
+        onClone = { cloneDialogOpen = true; gitError = null },
+        onRefresh = ::refreshGit,
+        onStage = { change -> runGitOperation("Staged ${change.path}") { root, _ -> GitRepository.stage(root, change.path) } },
+        onUnstage = { change -> runGitOperation("Unstaged ${change.path}") { root, _ -> GitRepository.unstage(root, change.path) } },
+        onStageAll = { runGitOperation("Staged all changes") { root, _ -> GitRepository.stageAll(root) } },
+        onCommit = { runGitOperation("Commit created") { root, _ -> GitRepository.commit(root, gitCommitMessage, gitAuthorName, gitAuthorEmail) } },
+        onCommitMessage = { gitCommitMessage = it },
+        onAuthorName = { gitAuthorName = it; gitConfig.edit().putString("author_name", it).apply() },
+        onAuthorEmail = { gitAuthorEmail = it; gitConfig.edit().putString("author_email", it).apply() },
+        onCreateBranch = { runGitOperation("Created branch $gitBranchName") { root, _ -> GitRepository.createBranch(root, gitBranchName) } },
+        onBranchName = { gitBranchName = it },
+        onCheckout = { branch -> runGitOperation("Switched to $branch") { root, _ -> GitRepository.checkout(root, branch) } },
+        onPull = {
+            if (tabs.any { it.dirty }) gitError = "Save or close dirty editor tabs before pulling changes"
+            else runGitOperation("Pulled from origin") { root, token -> GitRepository.pull(root, token) }
+        },
+        onPush = { runGitOperation("Pushed current branch") { root, token -> GitRepository.push(root, token) } },
+        onSaveToken = ::saveGitToken,
+        onClearToken = { GitCredentialStore.clear(context); status = "GitHub token removed" },
+    )
     fun updateTab(tab: EditorTab) {
         val index = tabs.indexOfFirst { it.id == tab.id }
         if (index >= 0) tabs[index] = tab
@@ -201,7 +305,7 @@ private fun ReversoApp() {
     fun openUri(uri: Uri, title: String) {
         runCatching {
             runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION) }
-            val text = context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+            val text = openWorkspaceInput(context, uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
                 ?: throw IOException("The selected document could not be read")
             val actualName = runCatching { DocumentFile.fromSingleUri(context, uri)?.name }.getOrNull() ?: title
             addTab(EditorTab(uri.toString(), actualName, uri, TextFieldValue(text)))
@@ -211,7 +315,7 @@ private fun ReversoApp() {
     fun saveTab(tab: EditorTab, destination: Uri? = tab.uri) {
         if (destination == null) { status = "Choose a location to save this file"; return }
         runCatching {
-            context.contentResolver.openOutputStream(destination, "wt")?.bufferedWriter(Charsets.UTF_8)?.use { it.write(tab.value.text) }
+            openWorkspaceOutput(context, destination)?.bufferedWriter(Charsets.UTF_8)?.use { it.write(tab.value.text) }
                 ?: throw IOException("The selected document could not be written")
             val updated = tab.copy(uri = destination, dirty = false)
             updateTab(updated); status = "Saved ${tab.title}"; log("Saved ${tab.title}")
@@ -471,6 +575,7 @@ private fun ReversoApp() {
                         exit = shrinkHorizontally(shrinkTowards = Alignment.Start) + slideOutHorizontally { -it / 3 } + fadeOut(),
                     ) {
                         IdeSidebar(activity, true, workspace?.name, treeItems, tabs, activeId, query, aiMessages, aiConfig != null && credentialSaved, aiLoading, aiError,
+                            gitScreenState = gitScreenState, gitScreenActions = gitScreenActions,
                             updateHistory = updateResult.releases, currentVersion = currentAppVersion, latestRelease = latestAvailableRelease, checkedAt = updateResult.checkedAt, updateError = updateResult.error, checkingUpdates = checkingUpdates, automaticUpdates = automaticUpdates, betaUpdates = betaUpdates, updateNotifications = updateNotifications, notificationsPermissionGranted = notificationsPermissionGranted,
                             onAutomaticUpdates = { automaticUpdates = it; UpdatePreferences.setAutomatic(context, it); if (it) checkUpdates() }, onBetaUpdates = { betaUpdates = it; UpdatePreferences.setBeta(context, it); checkUpdates() }, onUpdateNotifications = { enabled ->
                                 if (enabled && Build.VERSION.SDK_INT >= 33 && !notificationsPermissionGranted) notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -493,7 +598,7 @@ private fun ReversoApp() {
                             onSelect = { activeId = it.id }, onClose = { tabs.remove(it); if (activeId == it.id) activeId = tabs.lastOrNull()?.id }, onValue = ::updateTab,
                             onWorkspace = { activity = IdeActivity.EXPLORER }, onInsert = { active?.let { tab -> updateTab(insertAtSelection(tab, it)) } }, onWelcome = { activeId = null },
                             onNew = { newProjectDialog = true },
-                            onOpen = { openDocument.launch(arrayOf("text/*", "application/json", "application/xml", "application/octet-stream")) }, onFolder = { openFolder.launch(null) }, onRecent = { RecentProjects.open(context, it)?.let { ws -> workspace = ws; selectedDirectory = ws.root; expandedFolders.clear(); activity = IdeActivity.EXPLORER } }, onDocs = { runCatching { uriHandler.openUri("https://github.com/mryuvraj1/Reverso/tree/main/project-knowledge") } }, modifier = Modifier.weight(1f))
+                            onOpen = { openDocument.launch(arrayOf("text/*", "application/json", "application/xml", "application/octet-stream")) }, onFolder = { openFolder.launch(null) }, onRecent = { RecentProjects.open(context, it)?.let { ws -> workspace = ws; selectedDirectory = ws.root; expandedFolders.clear(); activity = IdeActivity.EXPLORER } }, onClone = { cloneDialogOpen = true; activity = IdeActivity.SOURCE_CONTROL }, onDocs = { runCatching { uriHandler.openUri("https://github.com/mryuvraj1/Reverso/tree/main/project-knowledge") } }, modifier = Modifier.weight(1f))
                         AnimatedVisibility(visible = bottomOpen, enter = expandVertically(expandFrom = Alignment.Bottom) + fadeIn(), exit = shrinkVertically(shrinkTowards = Alignment.Bottom) + fadeOut()) {
                             BottomPanel(bottomTool, output, Modifier.height(bottomHeight.dp), onTool = { bottomTool = it }, onClose = { bottomOpen = false }, onDrag = { delta -> bottomHeight = (bottomHeight - delta).coerceIn(110f, 420f) })
                         }
@@ -503,9 +608,10 @@ private fun ReversoApp() {
                 Column(Modifier.weight(1f).fillMaxWidth()) {
                     AnimatedContent(targetState = sidebarVisible, modifier = Modifier.weight(1f).fillMaxWidth(), label = "phone_sidebar_content") { showSidebar ->
                         if (!showSidebar) {
-                            EditorArea(active, tabs, activeId, false, workspace?.name, recents, onSelect = { activeId = it.id }, onClose = { tabs.remove(it); if (activeId == it.id) activeId = tabs.lastOrNull()?.id }, onValue = ::updateTab, onWorkspace = { activity = IdeActivity.EXPLORER; sidebarOverride = true }, onInsert = { active?.let { tab -> updateTab(insertAtSelection(tab, it)) } }, onWelcome = { activeId = null }, onNew = { newProjectDialog = true }, onOpen = { openDocument.launch(arrayOf("text/*", "application/json", "application/xml", "application/octet-stream")) }, onFolder = { openFolder.launch(null) }, onRecent = { RecentProjects.open(context, it)?.let { ws -> workspace = ws; sidebarOverride = true } }, onDocs = { runCatching { uriHandler.openUri("https://github.com/mryuvraj1/Reverso/tree/main/project-knowledge") } })
+                            EditorArea(active, tabs, activeId, false, workspace?.name, recents, onSelect = { activeId = it.id }, onClose = { tabs.remove(it); if (activeId == it.id) activeId = tabs.lastOrNull()?.id }, onValue = ::updateTab, onWorkspace = { activity = IdeActivity.EXPLORER; sidebarOverride = true }, onInsert = { active?.let { tab -> updateTab(insertAtSelection(tab, it)) } }, onWelcome = { activeId = null }, onNew = { newProjectDialog = true }, onOpen = { openDocument.launch(arrayOf("text/*", "application/json", "application/xml", "application/octet-stream")) }, onFolder = { openFolder.launch(null) }, onRecent = { RecentProjects.open(context, it)?.let { ws -> workspace = ws; sidebarOverride = true } }, onClone = { cloneDialogOpen = true; activity = IdeActivity.SOURCE_CONTROL }, onDocs = { runCatching { uriHandler.openUri("https://github.com/mryuvraj1/Reverso/tree/main/project-knowledge") } })
                         } else {
-                            IdeSidebar(activity, false, workspace?.name, treeItems, tabs, activeId, query, aiMessages, aiConfig != null && credentialSaved, aiLoading, aiError,
+                        IdeSidebar(activity, false, workspace?.name, treeItems, tabs, activeId, query, aiMessages, aiConfig != null && credentialSaved, aiLoading, aiError,
+                                gitScreenState = gitScreenState, gitScreenActions = gitScreenActions,
                                 updateHistory = updateResult.releases, currentVersion = currentAppVersion, latestRelease = latestAvailableRelease, checkedAt = updateResult.checkedAt, updateError = updateResult.error, checkingUpdates = checkingUpdates, automaticUpdates = automaticUpdates, betaUpdates = betaUpdates, updateNotifications = updateNotifications, notificationsPermissionGranted = notificationsPermissionGranted,
                                 onAutomaticUpdates = { automaticUpdates = it; UpdatePreferences.setAutomatic(context, it); if (it) checkUpdates() }, onBetaUpdates = { betaUpdates = it; UpdatePreferences.setBeta(context, it); checkUpdates() }, onUpdateNotifications = { enabled ->
                                     if (enabled && Build.VERSION.SDK_INT >= 33 && !notificationsPermissionGranted) notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -545,6 +651,13 @@ private fun ReversoApp() {
             TextButton(onClick = { runCatching { uriHandler.openUri(release.url) }; pendingRelease = null }) { Text("View Release Notes") }
         } },
         dismissButton = { TextButton(onClick = { UpdatePreferences.remindLater(context, release.tag); pendingRelease = null }) { Text("Remind Me Later") } }) }
+
+    if (cloneDialogOpen) GitCloneDialog(
+        loading = gitLoading,
+        error = gitError,
+        onDismiss = { cloneDialogOpen = false; gitError = null },
+        onClone = ::cloneRepository,
+    )
 
     downloadingTag?.let { tag -> AlertDialog(onDismissRequest = { }, title = { Text("Downloading Reverso $tag") }, text = { Row(verticalAlignment = Alignment.CenterVertically) { CircularProgressIndicator(Modifier.size(24.dp)); Spacer(Modifier.width(12.dp)); Text("Downloading and verifying the GitHub release APK…") } }, confirmButton = {}) }
     downloadError?.let { message -> AlertDialog(onDismissRequest = { downloadError = null }, title = { Text("Update download failed") }, text = { Text(message) }, confirmButton = { TextButton(onClick = { downloadError = null }) { Text("OK") } }) }
@@ -613,6 +726,8 @@ private fun activityIcon(item: IdeActivity) = when (item) {
     aiConfigured: Boolean,
     aiLoading: Boolean,
     aiError: String?,
+    gitScreenState: GitScreenState,
+    gitScreenActions: GitScreenActions,
     updateHistory: List<AvailableRelease>,
     currentVersion: String,
     latestRelease: AvailableRelease?,
@@ -661,6 +776,7 @@ private fun activityIcon(item: IdeActivity) = when (item) {
             )
             else -> SidebarToolPage(
                 activity, workspace, onOpenFolder, onOpenFile, onAiConfigure,
+                gitScreenState, gitScreenActions,
                 updateHistory, currentVersion, latestRelease, checkedAt, updateError, checkingUpdates, automaticUpdates, betaUpdates, updateNotifications, notificationsPermissionGranted,
                 onAutomaticUpdates, onBetaUpdates, onUpdateNotifications, onRequestNotificationPermission, onCheckUpdates, onDownloadUpdate, onViewRelease,
                 modifier = Modifier.weight(1f).fillMaxHeight(),
@@ -713,10 +829,10 @@ private fun activityIcon(item: IdeActivity) = when (item) {
     }
 }
 
-@Composable private fun EditorArea(active: EditorTab?, tabs: List<EditorTab>, activeId: String?, split: Boolean, workspace: String?, recents: List<RecentProject>, onSelect: (EditorTab) -> Unit, onClose: (EditorTab) -> Unit, onValue: (EditorTab) -> Unit, onWorkspace: () -> Unit, onInsert: (String) -> Unit, onWelcome: () -> Unit, onNew: () -> Unit, onOpen: () -> Unit, onFolder: () -> Unit, onRecent: (RecentProject) -> Unit, onDocs: () -> Unit, modifier: Modifier = Modifier) {
+@Composable private fun EditorArea(active: EditorTab?, tabs: List<EditorTab>, activeId: String?, split: Boolean, workspace: String?, recents: List<RecentProject>, onSelect: (EditorTab) -> Unit, onClose: (EditorTab) -> Unit, onValue: (EditorTab) -> Unit, onWorkspace: () -> Unit, onInsert: (String) -> Unit, onWelcome: () -> Unit, onNew: () -> Unit, onOpen: () -> Unit, onFolder: () -> Unit, onRecent: (RecentProject) -> Unit, onClone: () -> Unit, onDocs: () -> Unit, modifier: Modifier = Modifier) {
     Column(modifier.fillMaxSize().background(ReversoColors.Background)) {
         if (tabs.isNotEmpty()) EditorTabs(tabs, activeId, onSelect, onClose)
-        if (active == null) WelcomeScreen(recents, onNew, onOpen, onFolder, onRecent, onDocs)
+        if (active == null) WelcomeScreen(recents, onNew, onOpen, onFolder, onRecent, onClone, onDocs)
         else {
             Breadcrumbs(workspace, listOf(active.title), onWorkspace)
             if (split && tabs.size > 1) Row(Modifier.weight(1f)) {
@@ -730,14 +846,14 @@ private fun activityIcon(item: IdeActivity) = when (item) {
     }
 }
 
-@Composable private fun WelcomeScreen(recents: List<RecentProject>, onNew: () -> Unit, onOpen: () -> Unit, onFolder: () -> Unit, onRecent: (RecentProject) -> Unit, onDocs: () -> Unit) {
+@Composable private fun WelcomeScreen(recents: List<RecentProject>, onNew: () -> Unit, onOpen: () -> Unit, onFolder: () -> Unit, onRecent: (RecentProject) -> Unit, onClone: () -> Unit, onDocs: () -> Unit) {
     LazyColumn(Modifier.fillMaxSize().background(ReversoColors.Background).padding(horizontal = 22.dp), horizontalAlignment = Alignment.CenterHorizontally, contentPadding = PaddingValues(top = 28.dp, bottom = 28.dp)) {
         item { ReversoMark(76.dp); Spacer(Modifier.height(14.dp)); Text("REVERSO", style = MaterialTheme.typography.headlineSmall, letterSpacing = 3.sp); Text("Code anywhere. Build everything.", color = ReversoColors.Muted); Spacer(Modifier.height(26.dp)) }
         item { Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             WelcomeAction("Create New Project", "Start with a new editable file", Icons.Filled.Add, onNew)
             WelcomeAction("Open Folder", "Work with files in a workspace", Icons.Filled.FolderOpen, onFolder)
             WelcomeAction("Open File", "Edit an existing document", Icons.Filled.FileOpen, onOpen)
-            WelcomeAction("Clone Git Repository", "Git clone integration is not implemented yet", Icons.Filled.CloudDownload, null)
+            WelcomeAction("Clone Git Repository", "Clone an HTTPS GitHub repository", Icons.Filled.CloudDownload, onClone)
         }; Spacer(Modifier.height(24.dp)); Text("RECENT PROJECTS", Modifier.fillMaxWidth(), style = MaterialTheme.typography.labelLarge, color = ReversoColors.Muted); Spacer(Modifier.height(8.dp)) }
         if (recents.isEmpty()) item { Text("Folders you open will appear here.", Modifier.fillMaxWidth().padding(vertical = 16.dp), color = ReversoColors.Muted) }
         items(recents) { project -> TextButton(onClick = { onRecent(project) }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Filled.Folder, null, tint = ReversoColors.Blue); Column(Modifier.padding(start = 10.dp)) { Text(project.name, color = ReversoColors.Ink); Text(project.uri, color = ReversoColors.Muted, style = MaterialTheme.typography.labelSmall, maxLines = 1) } } }
@@ -757,6 +873,8 @@ private fun activityIcon(item: IdeActivity) = when (item) {
     onOpenFolder: () -> Unit,
     onOpenDocument: () -> Unit,
     onAiSettings: () -> Unit,
+    gitScreenState: GitScreenState,
+    gitScreenActions: GitScreenActions,
     updateHistory: List<AvailableRelease>,
     currentVersion: String,
     latestRelease: AvailableRelease?,
@@ -779,7 +897,7 @@ private fun activityIcon(item: IdeActivity) = when (item) {
     Column(modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(activity.label, style = MaterialTheme.typography.titleLarge)
         when (activity) {
-            IdeActivity.SOURCE_CONTROL -> UnavailableCard("Git not connected", "Repository detection and Git status, staging, commits, and remotes are not implemented yet.")
+            IdeActivity.SOURCE_CONTROL -> GitPanelScreen(gitScreenState, gitScreenActions)
             IdeActivity.RUN_DEBUG -> UnavailableCard("Debugger not connected", "Run configurations and a debugger are not available in this build.")
             IdeActivity.EXTENSIONS -> UnavailableCard("Reverso Hub not connected", "Extension discovery and installation are unavailable until the Hub service and safe extension runtime are implemented.")
             IdeActivity.SETTINGS -> {
