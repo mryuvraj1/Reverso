@@ -18,3 +18,7 @@
 - [x] Add JGit-backed GitHub clone and Git status/staging/commit/branch/history/push/pull for app-private clones; live remote operations, device Keystore validation, OAuth/device flow, remote management and SAF Git support remain incomplete.
 - [x] Run CI for JGit foundation: run 44997689939 passed Rust fmt/test/clippy and Android unit tests/build/lint; device and live remote checks remain pending.
 - [ ] Implement a supported authenticated interactive Termux session bridge. RUN_COMMAND was investigated but provides one-shot command/result semantics rather than a live terminal; Reverso currently does not invoke it.
+
+- [x] Trace launcher Activity, Compose navigation and actual theme/logo/update screens; make Updates a first-class phone destination, welcome action and Settings link.
+- [x] Polish the in-use Reverso logo, enforce sans-serif typography, add release channel/GitHub link controls, preserve dismissals and show APK byte progress.
+- [ ] Build, install, and visually compare this revised APK; current `adb devices` is empty and `pm list packages` shows Reverso is not installed in this environment. CI must build the APK; on-device comparison requires a connected device.

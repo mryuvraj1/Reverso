@@ -7,7 +7,7 @@ import androidx.documentfile.provider.DocumentFile
 
 internal enum class IdeActivity(val label: String) {
     EXPLORER("Explorer"), SEARCH("Search"), SOURCE_CONTROL("Source Control"),
-    RUN_DEBUG("Run & Debug"), EXTENSIONS("Extensions"), AI_CHAT("AI Chat"), SETTINGS("Settings"),
+    RUN_DEBUG("Run & Debug"), EXTENSIONS("Extensions"), AI_CHAT("AI Chat"), UPDATES("Updates"), SETTINGS("Settings"),
 }
 
 internal enum class BottomTool(val label: String) {

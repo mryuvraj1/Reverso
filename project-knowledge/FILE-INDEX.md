@@ -22,21 +22,21 @@ Inventory generated from the actual repository tree. Build outputs and dependenc
 | `app/src/main/java/dev/reverso/AiProvider.kt` | Android Kotlin source | Application behavior and data model | Android app |
 | `app/src/main/java/dev/reverso/EditorModels.kt` | Android Kotlin source | Application behavior and data model | Android app |
 | `app/src/main/java/dev/reverso/GitRepository.kt` | Android Kotlin source | JGit repository operations and encrypted GitHub credentials | Android Git |
-| `app/src/main/java/dev/reverso/MainActivity.kt` | Android Kotlin source | Application behavior and data model | Android app |
+| `app/src/main/java/dev/reverso/MainActivity.kt` | Android Kotlin source | Launcher Activity, Compose navigation, editor and update workflow coordination | Android app/UI |
 | `app/src/main/java/dev/reverso/ReleaseChecker.kt` | Android Kotlin source | Application behavior and data model | Android app |
 | `app/src/main/java/dev/reverso/UpdateInstaller.kt` | Android Kotlin source | Application behavior and data model | Android app |
 | `app/src/main/java/dev/reverso/UpdateScheduler.kt` | Android Kotlin source | Application behavior and data model | Android app |
 | `app/src/main/java/dev/reverso/Versioning.kt` | Android Kotlin source | Application behavior and data model | Android app |
 | `app/src/main/java/dev/reverso/WorkspaceRepository.kt` | Android Kotlin source | Application behavior and data model | Android app |
 | `app/src/main/java/dev/reverso/ui/AiScreens.kt` | Android Kotlin source | Application behavior and data model | Android app |
-| `app/src/main/java/dev/reverso/ui/Brand.kt` | Android Kotlin source | Application behavior and data model | Android app |
+| `app/src/main/java/dev/reverso/ui/Brand.kt` | Compose UI component | Reusable Reverso mark used by header and welcome screen | Android branding/UI |
 | `app/src/main/java/dev/reverso/ui/EditorSurface.kt` | Android Kotlin source | Application behavior and data model | Android app |
 | `app/src/main/java/dev/reverso/ui/GitScreens.kt` | Compose UI component | Git clone and source-control screens | Android Git/UI |
-| `app/src/main/java/dev/reverso/ui/ReversoTheme.kt` | Android Kotlin source | Application behavior and data model | Android app |
+| `app/src/main/java/dev/reverso/ui/ReversoTheme.kt` | Compose UI component | Dark color tokens and explicit sans-serif Material typography | Android theme/UI |
 | `app/src/main/java/dev/reverso/ui/SyntaxHighlight.kt` | Android Kotlin source | Application behavior and data model | Android app |
-| `app/src/main/java/dev/reverso/ui/UpdateSettingsScreen.kt` | Android Kotlin source | Application behavior and data model | Android app |
+| `app/src/main/java/dev/reverso/ui/UpdateSettingsScreen.kt` | Compose UI component | Dedicated Releases settings, channel controls, history and GitHub link | Android updates/UI |
 | `app/src/main/res/drawable/ic_update_notification.xml` | Android resource | Application manifest, UI resource, or icon | Android app |
-| `app/src/main/res/drawable/reverso_mark.xml` | Android resource | Application manifest, UI resource, or icon | Android app |
+| `app/src/main/res/drawable/reverso_mark.xml` | Android vector resource | Original Reverso looping-arrow/editor emblem for app and UI branding | Android branding |
 | `app/src/main/res/mipmap-anydpi-v26/ic_reverso.xml` | Android resource | Application manifest, UI resource, or icon | Android app |
 | `app/src/main/res/values/colors.xml` | Android resource | Application manifest, UI resource, or icon | Android app |
 | `app/src/main/res/values/styles.xml` | Android resource | Application manifest, UI resource, or icon | Android app |

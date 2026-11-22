@@ -28,3 +28,8 @@ User supplies a GitHub HTTPS URL and destination name in `GitCloneDialog` -> `Gi
 ## Termux boundary
 
 No command flow is currently wired. The bottom Terminal panel renders an explicit unavailable state. The Termux documented RUN_COMMAND intent is a potential one-shot command interface, with user permission and Termux opt-in; its completion callback is not interactive terminal streaming. Reverso does not send those intents or fabricate output. See [18-GIT-AND-TERMUX.md](18-GIT-AND-TERMUX.md).
+
+
+## Update navigation and APK delivery
+
+Launcher `MainActivity.onCreate` -> `ReversoTheme` -> `ReversoApp` owns release-check state. The Updates activity rail, welcome action, and Settings shortcut all select `IdeActivity.UPDATES`, which renders `UpdateSettingsScreen`. Manual/automatic checks call the fixed Releases API on IO -> cache metadata and time -> choose stable or beta candidates -> render version/history/error and optionally open a dismissible newer-release dialog. Download streams the selected official APK into app cache, reports byte progress to Compose, validates size and SHA-256 when supplied, then waits for the user's install action and hands the file to Android's package installer. Android handles install permission and final confirmation. No silent installation occurs.

@@ -39,3 +39,10 @@ Git snapshots now return an empty history before the first commit, matching Git'
 ## 2026-11-22 — Git foundation CI verification
 
 CI run 44997689939 passed Rust formatting/tests/Clippy and Android unit tests/build/lint for commit `977905c`, including the new JGit real-local-repository tests; CI uploaded a debug APK. Live GitHub network operations and Android device workflows remain unverified.
+
+## 2026-11-22 — Make updates reachable and polish live Reverso UI
+
+Traced the launcher `MainActivity` and phone navigation. Moved release preferences into a first-class Updates activity reachable from the rail, welcome screen and Settings shortcut. Added explicit Stable/Stable + Beta controls, View on GitHub, release-dialog dismissal persistence and byte-based APK download progress. Set Material typography explicitly to sans-serif and revised the actual adaptive launcher/header logo vector. ADB currently reports no attached devices, so install/launch visual comparison remains unverified.
+
+
+The existing update settings were nested inside the phone-collapsed sidebar's Settings page. The user-visible route is now a dedicated Updates activity and welcome action, with a Settings shortcut. Dismissing an update dialog now stores the remind-later tag.

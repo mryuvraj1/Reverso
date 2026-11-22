@@ -107,6 +107,7 @@ private fun ReversoApp() {
     var downloadedUpdate by remember { mutableStateOf<DownloadedUpdate?>(null) }
     var installError by remember { mutableStateOf<String?>(null) }
     var pendingInstallerPermission by remember { mutableStateOf<DownloadedUpdate?>(null) }
+    var downloadProgress by remember { mutableFloatStateOf(0f) }
     var gitSnapshot by remember { mutableStateOf<GitSnapshot?>(null) }
     var gitLoading by remember { mutableStateOf(false) }
     var gitProgress by remember { mutableStateOf<String?>(null) }
@@ -196,9 +197,14 @@ private fun ReversoApp() {
         if (release.apk == null) { downloadError = "This release has no compatible Android APK; it is available as source code only."; return }
         downloadedUpdate = null
         downloadingTag = release.tag
+        downloadProgress = 0f
         downloadError = null
         coroutineScope.launch {
-            runCatching { withContext(Dispatchers.IO) { UpdateInstaller.download(context, release) } }
+            runCatching { withContext(Dispatchers.IO) {
+                UpdateInstaller.download(context, release) { downloaded, total ->
+                    coroutineScope.launch { downloadProgress = if (total > 0L) downloaded.toFloat() / total else 0f }
+                }
+            } }
                 .onSuccess { downloadedUpdate = it; status = "Downloaded Reverso ${release.tag}" }
                 .onFailure { downloadError = it.message ?: "APK download failed" }
             downloadingTag = null
@@ -582,6 +588,7 @@ private fun ReversoApp() {
                                 else { updateNotifications = enabled; UpdatePreferences.setNotifications(context, enabled) }
                             }, onRequestNotificationPermission = { if (Build.VERSION.SDK_INT >= 33) notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) },
                             onCheckUpdates = { checkUpdates() }, onDownloadUpdate = ::downloadUpdate, onViewRelease = { runCatching { uriHandler.openUri(it.url) } },
+                            onOpenUpdates = { activity = IdeActivity.UPDATES; sidebarOverride = true },
                             onActivity = { activity = it }, onQuery = { query = it }, onOpenFolder = { openFolder.launch(null) },
                             onOpenFile = { openDocument.launch(arrayOf("text/*", "application/json", "application/xml", "application/octet-stream")) },
                             onCreateFile = { createFolder = false; createDialog = true }, onCreateFolder = { createFolder = true; createDialog = true },
@@ -598,7 +605,7 @@ private fun ReversoApp() {
                             onSelect = { activeId = it.id }, onClose = { tabs.remove(it); if (activeId == it.id) activeId = tabs.lastOrNull()?.id }, onValue = ::updateTab,
                             onWorkspace = { activity = IdeActivity.EXPLORER }, onInsert = { active?.let { tab -> updateTab(insertAtSelection(tab, it)) } }, onWelcome = { activeId = null },
                             onNew = { newProjectDialog = true },
-                            onOpen = { openDocument.launch(arrayOf("text/*", "application/json", "application/xml", "application/octet-stream")) }, onFolder = { openFolder.launch(null) }, onRecent = { RecentProjects.open(context, it)?.let { ws -> workspace = ws; selectedDirectory = ws.root; expandedFolders.clear(); activity = IdeActivity.EXPLORER } }, onClone = { cloneDialogOpen = true; activity = IdeActivity.SOURCE_CONTROL }, onDocs = { runCatching { uriHandler.openUri("https://github.com/mryuvraj1/Reverso/tree/main/project-knowledge") } }, modifier = Modifier.weight(1f))
+                            onOpen = { openDocument.launch(arrayOf("text/*", "application/json", "application/xml", "application/octet-stream")) }, onFolder = { openFolder.launch(null) }, onRecent = { RecentProjects.open(context, it)?.let { ws -> workspace = ws; selectedDirectory = ws.root; expandedFolders.clear(); activity = IdeActivity.EXPLORER } }, onClone = { cloneDialogOpen = true; activity = IdeActivity.SOURCE_CONTROL }, onUpdates = { activity = IdeActivity.UPDATES; sidebarOverride = true }, onDocs = { runCatching { uriHandler.openUri("https://github.com/mryuvraj1/Reverso/tree/main/project-knowledge") } }, modifier = Modifier.weight(1f))
                         AnimatedVisibility(visible = bottomOpen, enter = expandVertically(expandFrom = Alignment.Bottom) + fadeIn(), exit = shrinkVertically(shrinkTowards = Alignment.Bottom) + fadeOut()) {
                             BottomPanel(bottomTool, output, Modifier.height(bottomHeight.dp), onTool = { bottomTool = it }, onClose = { bottomOpen = false }, onDrag = { delta -> bottomHeight = (bottomHeight - delta).coerceIn(110f, 420f) })
                         }
@@ -608,7 +615,7 @@ private fun ReversoApp() {
                 Column(Modifier.weight(1f).fillMaxWidth()) {
                     AnimatedContent(targetState = sidebarVisible, modifier = Modifier.weight(1f).fillMaxWidth(), label = "phone_sidebar_content") { showSidebar ->
                         if (!showSidebar) {
-                            EditorArea(active, tabs, activeId, false, workspace?.name, recents, onSelect = { activeId = it.id }, onClose = { tabs.remove(it); if (activeId == it.id) activeId = tabs.lastOrNull()?.id }, onValue = ::updateTab, onWorkspace = { activity = IdeActivity.EXPLORER; sidebarOverride = true }, onInsert = { active?.let { tab -> updateTab(insertAtSelection(tab, it)) } }, onWelcome = { activeId = null }, onNew = { newProjectDialog = true }, onOpen = { openDocument.launch(arrayOf("text/*", "application/json", "application/xml", "application/octet-stream")) }, onFolder = { openFolder.launch(null) }, onRecent = { RecentProjects.open(context, it)?.let { ws -> workspace = ws; sidebarOverride = true } }, onClone = { cloneDialogOpen = true; activity = IdeActivity.SOURCE_CONTROL }, onDocs = { runCatching { uriHandler.openUri("https://github.com/mryuvraj1/Reverso/tree/main/project-knowledge") } })
+                            EditorArea(active, tabs, activeId, false, workspace?.name, recents, onSelect = { activeId = it.id }, onClose = { tabs.remove(it); if (activeId == it.id) activeId = tabs.lastOrNull()?.id }, onValue = ::updateTab, onWorkspace = { activity = IdeActivity.EXPLORER; sidebarOverride = true }, onInsert = { active?.let { tab -> updateTab(insertAtSelection(tab, it)) } }, onWelcome = { activeId = null }, onNew = { newProjectDialog = true }, onOpen = { openDocument.launch(arrayOf("text/*", "application/json", "application/xml", "application/octet-stream")) }, onFolder = { openFolder.launch(null) }, onRecent = { RecentProjects.open(context, it)?.let { ws -> workspace = ws; sidebarOverride = true } }, onClone = { cloneDialogOpen = true; activity = IdeActivity.SOURCE_CONTROL }, onUpdates = { activity = IdeActivity.UPDATES; sidebarOverride = true }, onDocs = { runCatching { uriHandler.openUri("https://github.com/mryuvraj1/Reverso/tree/main/project-knowledge") } })
                         } else {
                         IdeSidebar(activity, false, workspace?.name, treeItems, tabs, activeId, query, aiMessages, aiConfig != null && credentialSaved, aiLoading, aiError,
                                 gitScreenState = gitScreenState, gitScreenActions = gitScreenActions,
@@ -618,6 +625,7 @@ private fun ReversoApp() {
                                     else { updateNotifications = enabled; UpdatePreferences.setNotifications(context, enabled) }
                                 }, onRequestNotificationPermission = { if (Build.VERSION.SDK_INT >= 33) notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) },
                                 onCheckUpdates = { checkUpdates() }, onDownloadUpdate = ::downloadUpdate, onViewRelease = { runCatching { uriHandler.openUri(it.url) } },
+                                onOpenUpdates = { activity = IdeActivity.UPDATES; sidebarOverride = true },
                                 onActivity = { activity = it }, onQuery = { query = it }, onOpenFolder = { openFolder.launch(null) },
                                 onOpenFile = { openDocument.launch(arrayOf("text/*", "application/json", "application/xml", "application/octet-stream")) },
                                 onCreateFile = { createFolder = false; createDialog = true }, onCreateFolder = { createFolder = true; createDialog = true },
@@ -638,7 +646,7 @@ private fun ReversoApp() {
         }
     }
 
-    pendingRelease?.let { release -> AlertDialog(onDismissRequest = { pendingRelease = null }, title = { Text("New Reverso update available") },
+    pendingRelease?.let { release -> AlertDialog(onDismissRequest = { UpdatePreferences.remindLater(context, release.tag); pendingRelease = null }, title = { Text("Reverso Update Available!") },
         text = { Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Current version: $currentAppVersion")
             Text("Latest version: ${release.tag}")
@@ -648,7 +656,7 @@ private fun ReversoApp() {
         } },
         confirmButton = { Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             if (release.apk != null) TextButton(onClick = { pendingRelease = null; downloadUpdate(release) }) { Text("Download Update") }
-            TextButton(onClick = { runCatching { uriHandler.openUri(release.url) }; pendingRelease = null }) { Text("View Release Notes") }
+            TextButton(onClick = { runCatching { uriHandler.openUri(release.url) }; UpdatePreferences.remindLater(context, release.tag); pendingRelease = null }) { Text("View Release Notes") }
         } },
         dismissButton = { TextButton(onClick = { UpdatePreferences.remindLater(context, release.tag); pendingRelease = null }) { Text("Remind Me Later") } }) }
 
@@ -659,7 +667,11 @@ private fun ReversoApp() {
         onClone = ::cloneRepository,
     )
 
-    downloadingTag?.let { tag -> AlertDialog(onDismissRequest = { }, title = { Text("Downloading Reverso $tag") }, text = { Row(verticalAlignment = Alignment.CenterVertically) { CircularProgressIndicator(Modifier.size(24.dp)); Spacer(Modifier.width(12.dp)); Text("Downloading and verifying the GitHub release APK…") } }, confirmButton = {}) }
+    downloadingTag?.let { tag -> AlertDialog(onDismissRequest = { }, title = { Text("Downloading Reverso $tag") }, text = { Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text("Downloading and verifying the official GitHub release APK…", color = ReversoColors.Muted)
+        LinearProgressIndicator(progress = { downloadProgress.coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
+        Text("${(downloadProgress.coerceIn(0f, 1f) * 100).toInt()}%", color = ReversoColors.Muted, style = MaterialTheme.typography.labelSmall)
+    } }, confirmButton = {}) }
     downloadError?.let { message -> AlertDialog(onDismissRequest = { downloadError = null }, title = { Text("Update download failed") }, text = { Text(message) }, confirmButton = { TextButton(onClick = { downloadError = null }) { Text("OK") } }) }
     downloadedUpdate?.let { update -> AlertDialog(
         onDismissRequest = { downloadedUpdate = null },
@@ -711,6 +723,7 @@ private fun activityIcon(item: IdeActivity) = when (item) {
     IdeActivity.RUN_DEBUG -> Icons.Filled.BugReport
     IdeActivity.EXTENSIONS -> Icons.Filled.Extension
     IdeActivity.AI_CHAT -> Icons.Filled.AutoAwesome
+    IdeActivity.UPDATES -> Icons.Filled.SystemUpdate
     IdeActivity.SETTINGS -> Icons.Filled.Settings
 }
 
@@ -745,6 +758,7 @@ private fun activityIcon(item: IdeActivity) = when (item) {
     onCheckUpdates: () -> Unit,
     onDownloadUpdate: (AvailableRelease) -> Unit,
     onViewRelease: (AvailableRelease) -> Unit,
+    onOpenUpdates: () -> Unit,
     onActivity: (IdeActivity) -> Unit,
     onQuery: (String) -> Unit,
     onOpenFolder: () -> Unit,
@@ -776,7 +790,7 @@ private fun activityIcon(item: IdeActivity) = when (item) {
             )
             else -> SidebarToolPage(
                 activity, workspace, onOpenFolder, onOpenFile, onAiConfigure,
-                gitScreenState, gitScreenActions,
+                gitScreenState, gitScreenActions, onOpenUpdates,
                 updateHistory, currentVersion, latestRelease, checkedAt, updateError, checkingUpdates, automaticUpdates, betaUpdates, updateNotifications, notificationsPermissionGranted,
                 onAutomaticUpdates, onBetaUpdates, onUpdateNotifications, onRequestNotificationPermission, onCheckUpdates, onDownloadUpdate, onViewRelease,
                 modifier = Modifier.weight(1f).fillMaxHeight(),
@@ -829,10 +843,10 @@ private fun activityIcon(item: IdeActivity) = when (item) {
     }
 }
 
-@Composable private fun EditorArea(active: EditorTab?, tabs: List<EditorTab>, activeId: String?, split: Boolean, workspace: String?, recents: List<RecentProject>, onSelect: (EditorTab) -> Unit, onClose: (EditorTab) -> Unit, onValue: (EditorTab) -> Unit, onWorkspace: () -> Unit, onInsert: (String) -> Unit, onWelcome: () -> Unit, onNew: () -> Unit, onOpen: () -> Unit, onFolder: () -> Unit, onRecent: (RecentProject) -> Unit, onClone: () -> Unit, onDocs: () -> Unit, modifier: Modifier = Modifier) {
+@Composable private fun EditorArea(active: EditorTab?, tabs: List<EditorTab>, activeId: String?, split: Boolean, workspace: String?, recents: List<RecentProject>, onSelect: (EditorTab) -> Unit, onClose: (EditorTab) -> Unit, onValue: (EditorTab) -> Unit, onWorkspace: () -> Unit, onInsert: (String) -> Unit, onWelcome: () -> Unit, onNew: () -> Unit, onOpen: () -> Unit, onFolder: () -> Unit, onRecent: (RecentProject) -> Unit, onClone: () -> Unit, onUpdates: () -> Unit, onDocs: () -> Unit, modifier: Modifier = Modifier) {
     Column(modifier.fillMaxSize().background(ReversoColors.Background)) {
         if (tabs.isNotEmpty()) EditorTabs(tabs, activeId, onSelect, onClose)
-        if (active == null) WelcomeScreen(recents, onNew, onOpen, onFolder, onRecent, onClone, onDocs)
+        if (active == null) WelcomeScreen(recents, onNew, onOpen, onFolder, onRecent, onClone, onUpdates, onDocs)
         else {
             Breadcrumbs(workspace, listOf(active.title), onWorkspace)
             if (split && tabs.size > 1) Row(Modifier.weight(1f)) {
@@ -846,7 +860,7 @@ private fun activityIcon(item: IdeActivity) = when (item) {
     }
 }
 
-@Composable private fun WelcomeScreen(recents: List<RecentProject>, onNew: () -> Unit, onOpen: () -> Unit, onFolder: () -> Unit, onRecent: (RecentProject) -> Unit, onClone: () -> Unit, onDocs: () -> Unit) {
+@Composable private fun WelcomeScreen(recents: List<RecentProject>, onNew: () -> Unit, onOpen: () -> Unit, onFolder: () -> Unit, onRecent: (RecentProject) -> Unit, onClone: () -> Unit, onUpdates: () -> Unit, onDocs: () -> Unit) {
     LazyColumn(Modifier.fillMaxSize().background(ReversoColors.Background).padding(horizontal = 22.dp), horizontalAlignment = Alignment.CenterHorizontally, contentPadding = PaddingValues(top = 28.dp, bottom = 28.dp)) {
         item { ReversoMark(76.dp); Spacer(Modifier.height(14.dp)); Text("REVERSO", style = MaterialTheme.typography.headlineSmall, letterSpacing = 3.sp); Text("Code anywhere. Build everything.", color = ReversoColors.Muted); Spacer(Modifier.height(26.dp)) }
         item { Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -854,6 +868,7 @@ private fun activityIcon(item: IdeActivity) = when (item) {
             WelcomeAction("Open Folder", "Work with files in a workspace", Icons.Filled.FolderOpen, onFolder)
             WelcomeAction("Open File", "Edit an existing document", Icons.Filled.FileOpen, onOpen)
             WelcomeAction("Clone Git Repository", "Clone an HTTPS GitHub repository", Icons.Filled.CloudDownload, onClone)
+            WelcomeAction("Updates & Releases", "Check versions and update preferences", Icons.Filled.SystemUpdate, onUpdates)
         }; Spacer(Modifier.height(24.dp)); Text("RECENT PROJECTS", Modifier.fillMaxWidth(), style = MaterialTheme.typography.labelLarge, color = ReversoColors.Muted); Spacer(Modifier.height(8.dp)) }
         if (recents.isEmpty()) item { Text("Folders you open will appear here.", Modifier.fillMaxWidth().padding(vertical = 16.dp), color = ReversoColors.Muted) }
         items(recents) { project -> TextButton(onClick = { onRecent(project) }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Filled.Folder, null, tint = ReversoColors.Blue); Column(Modifier.padding(start = 10.dp)) { Text(project.name, color = ReversoColors.Ink); Text(project.uri, color = ReversoColors.Muted, style = MaterialTheme.typography.labelSmall, maxLines = 1) } } }
@@ -875,6 +890,7 @@ private fun activityIcon(item: IdeActivity) = when (item) {
     onAiSettings: () -> Unit,
     gitScreenState: GitScreenState,
     gitScreenActions: GitScreenActions,
+    onOpenUpdates: () -> Unit,
     updateHistory: List<AvailableRelease>,
     currentVersion: String,
     latestRelease: AvailableRelease?,
@@ -906,6 +922,9 @@ private fun activityIcon(item: IdeActivity) = when (item) {
                 Button(onClick = onAiSettings, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Filled.AutoAwesome, null); Text("  Configure AI provider") }
                 Text("AI keys are stored encrypted in Android Keystore. Requests are sent directly to the configured HTTPS provider.", color = ReversoColors.Muted, style = MaterialTheme.typography.bodySmall)
                 HorizontalDivider(color = ReversoColors.Border)
+                OutlinedButton(onClick = onOpenUpdates, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Filled.SystemUpdate, null); Text("  Updates and Releases") }
+            }
+            IdeActivity.UPDATES -> {
                 UpdateSettingsScreen(
                     currentVersion, latestRelease?.tag, updateHistory, checkedAt, updateError, checkingUpdates,
                     automaticUpdates, betaUpdates, updateNotifications, notificationsPermissionGranted,

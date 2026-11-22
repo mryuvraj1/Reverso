@@ -30,3 +30,10 @@
 - Handle repositories with no initial commit in Git status/history.
 
 - CI run 44997689939 passed Rust checks, Android tests/build/lint, and uploaded a debug APK.
+
+
+## UI and update discoverability
+
+- Added direct Updates navigation from the phone activity rail, welcome screen, and Settings shortcut.
+- Clarified Stable/Beta release channel selection, added a GitHub releases link, persisted popup dismissal, and displayed APK transfer progress.
+- Set explicit sans-serif Material typography and refined the in-use Reverso vector logo for the header and adaptive launcher icon.

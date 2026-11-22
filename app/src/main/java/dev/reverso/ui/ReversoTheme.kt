@@ -1,9 +1,11 @@
 package dev.reverso.ui
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 
 object ReversoColors {
     val Background = Color(0xFF0B0F19)
@@ -33,6 +35,7 @@ fun ReversoTheme(content: @Composable () -> Unit) {
             onSurface = ReversoColors.Ink,
             onSurfaceVariant = ReversoColors.Muted,
         ),
+        typography = Typography(defaultFontFamily = FontFamily.SansSerif),
         content = content,
     )
 }

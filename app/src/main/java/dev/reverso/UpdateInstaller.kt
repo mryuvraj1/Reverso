@@ -16,7 +16,7 @@ internal data class DownloadedUpdate(val file: File, val checksumVerified: Boole
 internal object UpdateInstaller {
     private const val MAX_APK_BYTES = 200L * 1024 * 1024
 
-    fun download(context: Context, release: AvailableRelease): DownloadedUpdate {
+    fun download(context: Context, release: AvailableRelease, onProgress: (downloadedBytes: Long, totalBytes: Long) -> Unit = { _, _ -> }): DownloadedUpdate {
         val asset = release.apk ?: throw IOException("This release has no compatible Android APK; it is available as source code only")
         if (!asset.name.endsWith(".apk", ignoreCase = true) || !asset.url.startsWith("https://github.com/mryuvraj1/Reverso/releases/download/")) {
             throw IOException("The release APK asset is not from the official Reverso repository")
@@ -50,6 +50,7 @@ internal object UpdateInstaller {
                     if (total > MAX_APK_BYTES) throw IOException("APK exceeded the 200 MB download limit")
                     digest.update(buffer, 0, count)
                     output.write(buffer, 0, count)
+                    onProgress(total, asset.size)
                 }
             } }
             if (total != asset.size) throw IOException("Downloaded APK size does not match GitHub release metadata")
