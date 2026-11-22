@@ -1,57 +1,33 @@
-# Project knowledge changelog
+# Engineering task tracker
 
-## 2026-11-22 — File handling and narrow-screen polish
+- [x] Inspect local workspace and existing Reverso GitHub repository.
+- [x] Add Rust workspace with UTF-8-safe buffer and editor operations.
+- [x] Add Android Compose editor with SAF open/save, tabs, and find/replace.
+- [x] Add branded responsive IDE shell, recent SAF workspaces, file/folder creation and search.
+- [x] Add a toggleable responsive sidebar and resizable animated bottom panel with Terminal, Output, Problems, Debug Console and Ports tabs.
+- [x] Add provider-specific AI configuration and chat for OpenAI Chat Completions, Anthropic Messages, OpenRouter and custom OpenAI-compatible HTTPS APIs.
+- [x] Encrypt API keys with provider-specific Android Keystore AES-GCM keys; keep keys out of logs and opt file context in per prompt.
+- [x] Require confirmation before replacing the active editor buffer with an AI response.
+- [x] Add unit tests for provider config/endpoint security and AI context opt-in.
+- [x] Preserve typed filename extensions, create files under the selected SAF workspace/nested folder, persist the parent tree grant, and restore the latest workspace at startup.
+- [x] Add SAF provider-backed rename/delete/copy/move actions, file type icons, Save As and refresh; provider/device behavior still needs device verification.
+- [x] Implement stable/beta update service, launch and periodic WorkManager checks, update preferences/history/notifications, bounded official APK download with optional GitHub SHA-256 verification, and Android installer handoff. Device end-to-end verification remains pending.
+- [x] Run Android and Rust CI for the update-service revision (GitHub Actions run 44947324260); Android SDK is unavailable locally. Device verification with SAF providers, update notifications, APK download/installation and live provider credentials remains required.
+- [ ] Connect Android editor to Rust through JNI and establish offset conversion tests.
+- [ ] Add Android instrumentation/device tests for SAF, sidebar/panel gestures, orientation, keyboard, and Keystore.
+- [x] Add JGit-backed GitHub clone and Git status/staging/commit/branch/history/push/pull for app-private clones; live remote operations, device Keystore validation, OAuth/device flow, remote management and SAF Git support remain incomplete.
+- [x] Run CI for JGit foundation: run 44997689939 passed Rust fmt/test/clippy and Android unit tests/build/lint; device and live remote checks remain pending.
+- [ ] Implement a supported authenticated interactive Termux session bridge. RUN_COMMAND was investigated but provides one-shot command/result semantics rather than a live terminal; Reverso currently does not invoke it.
 
-Documented exact-extension Save As/create, nested workspace targets, persistent SAF tree grants and startup restoration, Explorer refresh and file icons, storage-provider rename/delete/copy/move, keyboard resizing and the launch-only update-check boundary.
-
-## 2026-11-22 — SAF filename and workspace persistence fixes
-
-Documented exact-name Save As, extension-derived MIME types, child-project persistence via the original granted tree URI, auto-restoration of the latest workspace, nested creation targets, provider-backed rename/delete/copy/move, and manual Explorer refresh. Recorded device-only SAF verification requirements and the still-incomplete background update/notification/APK installer system.
-
-## 2026-11-21 — CI verification
-
-Recorded successful Android and Rust CI for the IDE and AI provider changes; the workflow uploaded a debug APK artifact.
-
-## 2026-11-21 — Toggleable IDE panels and AI provider client
-
-Documented the responsive hide/show sidebar and editor space recovery, animated draggable bottom panel and Ports destination. Added provider-specific AI setup/API, encrypted per-provider Android Keystore keys, opt-in file context, bounded direct HTTPS requests, in-memory chats, and explicit whole-buffer apply confirmation. Documented that provider credentials and Android device runtime are required for live API/Keystore verification.
-
-## 2026-11-21 — Professional mobile IDE shell
-
-Documented Reverso branding, responsive navigation, workspace tree, file editing, syntax-colored editor surface and unavailable backend states.
-
-## 2026-11-22
-
-Implemented the official GitHub Releases update manager: stable/beta filtering, launch and periodic checks, cached release history, settings, Android notification channel and deduplication, bounded official APK download, SHA-256 verification when provided, source-only reporting, and Android installer handoff with explicit user confirmation. Added release selection/cache/checksum and ABI asset-selection tests and update architecture/security documentation. CI run 44947324260 passed Rust formatting/tests/Clippy and Android unit-test/build/lint jobs, including supported/incompatible ABI asset selection. A debug APK was uploaded. Device-level network, notification, APK download and installer verification remains pending.
-
-## 2026-11-22 — Git foundation and integration boundaries
-
-Added JGit-backed GitHub clone and source control for app-private managed repositories, with encrypted fine-grained token storage, status/staging/commit/branches/history/push/pull UI, and local repository tests. Added `file://` workspace I/O for those clones. Documented SAF filesystem limits and Termux RUN_COMMAND semantics; interactive terminal integration remains unimplemented. Live remote/device verification remains required.
-
-## 2026-11-22 — JGit API compatibility correction
-
-Updated remote URL snapshotting to call JGit's public `getURIs()` accessor after CI caught that the `uris` field is private.
-
-## 2026-11-22 — Unborn Git repository support
-
-Git snapshots now return an empty history before the first commit, matching Git's unborn-branch state.
-
-## 2026-11-22 — Git foundation CI verification
-
-CI run 44997689939 passed Rust formatting/tests/Clippy and Android unit tests/build/lint for commit `977905c`, including the new JGit real-local-repository tests; CI uploaded a debug APK. Live GitHub network operations and Android device workflows remain unverified.
-
-## 2026-11-22 — Make updates reachable and polish live Reverso UI
-
-Traced the launcher `MainActivity` and phone navigation. Moved release preferences into a first-class Updates activity reachable from the rail, welcome screen and Settings shortcut. Added explicit Stable/Stable + Beta controls, View on GitHub, release-dialog dismissal persistence and byte-based APK download progress. Set Material typography explicitly to sans-serif and revised the actual adaptive launcher/header logo vector. ADB currently reports no attached devices, so install/launch visual comparison remains unverified.
+- [x] Trace launcher Activity, Compose navigation and actual theme/logo/update screens; make Updates a first-class phone destination, welcome action and Settings link.
+- [x] Polish the in-use Reverso logo, enforce sans-serif typography, add release channel/GitHub link controls, preserve dismissals and show APK byte progress.
+- [x] Build the revised APK and run Android unit tests/lint plus Rust checks in CI (run 44999601869, commit `a275167`); CI uploaded `reverso-android-debug-apk`.
+- [ ] Install, launch, and visually compare this revised APK; current `adb devices` is empty and `pm list packages` shows Reverso is not installed in this environment. A connected Android device is required.
+- [x] Build compact-header, Explorer/rail/panel polish, Git status and terminal limitation updates in CI run 45022556880 (commit `c6a85a0`); APK uploaded and downloaded to `app/build/reverso-ci-45022556880/app-debug.apk`.
+- [x] Build visual polish pass in CI (run 45021826424, commit `561c343`): Android unit tests, APK assembly/lint, and Rust checks passed. A final status/terminal clarity correction follows separately.
+- [ ] Install, launch, and visually compare versionCode 2 build when an Android device is connected.
 
 
-The existing update settings were nested inside the phone-collapsed sidebar's Settings page. The user-visible route is now a dedicated Updates activity and welcome action, with a Settings shortcut. Dismissing an update dialog now stores the remind-later tag.
+## 2026-11-22 — Active mobile IDE visual fix
 
-## 2026-11-22 — Compose API compatibility
-
-Applied sans-serif fonts per Material typography role and replaced an unavailable generated icon with the supported link icon after CI compilation identified pinned-library API differences.
-
-
-## 2026-11-22 — UI/update build verification
-
-CI run [44999601869](https://github.com/mryuvraj1/Reverso/actions/runs/44999601869) passed Android unit tests, debug APK assembly and lint, plus Rust formatting/tests/Clippy, for commit `a275167`. The run uploaded `reverso-android-debug-apk` containing `app-debug.apk`. No Android device was attached, so install, launch and screenshot comparison remain unverified.
+Refined the actual `Header`, `ActivityRail`, `SidePanel`, `BottomPanel`, and `StatusBar` composables in `MainActivity.kt`; compact phone controls move into an overflow menu, Explorer hierarchy and selected rail/panel states are clearer, and Git now reports the JGit branch/change count or managed-clone boundary instead of a hardcoded unavailable label. Replaced the fragmented vector with an original R ribbon mark, applied it through `Brand.kt`, and incremented Android versionCode to 2 so this build can replace versionCode 1. CI run [45022556880](https://github.com/mryuvraj1/Reverso/actions/runs/45022556880) passed Rust/Android checks and uploaded the debug APK. It was downloaded to `app/build/reverso-ci-45022556880/app-debug.apk`. No Android device was available for installation or visual inspection.
