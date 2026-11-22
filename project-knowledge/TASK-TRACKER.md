@@ -24,3 +24,4 @@
 - [x] Build the revised APK and run Android unit tests/lint plus Rust checks in CI (run 44999601869, commit `a275167`); CI uploaded `reverso-android-debug-apk`.
 - [ ] Install, launch, and visually compare this revised APK; current `adb devices` is empty and `pm list packages` shows Reverso is not installed in this environment. A connected Android device is required.
 - [ ] Build the compact-header, Explorer/rail/panel polish and versionCode 2 APK in CI; this is the current code revision.
+- [x] Build visual polish pass in CI (run 45021826424, commit `561c343`): Android unit tests, APK assembly/lint, and Rust checks passed. A final status/terminal clarity correction follows separately.

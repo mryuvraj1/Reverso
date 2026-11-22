@@ -643,7 +643,16 @@ private fun ReversoApp() {
                     }
                 }
             }
-            if (active != null) StatusBar(active, status)
+            if (active != null) StatusBar(
+                active,
+                status,
+                when {
+                    managedGitWorkspace && gitSnapshot != null -> "Git · ${gitSnapshot!!.branch}${if (gitSnapshot!!.changes.isNotEmpty()) " · ${gitSnapshot!!.changes.size} changes" else ""}"
+                    managedGitWorkspace && gitLoading -> "Git · loading"
+                    managedGitWorkspace -> "Git · unavailable for this clone"
+                    else -> "Git · Reverso-managed clones only"
+                },
+            )
         }
     }
 
@@ -1014,20 +1023,20 @@ private fun activityIcon(item: IdeActivity) = when (item) {
         when (tool) {
             BottomTool.OUTPUT -> LazyColumn(Modifier.weight(1f, fill = false).padding(horizontal = 12.dp)) { items(output) { Text(it, color = ReversoColors.Muted, style = MaterialTheme.typography.bodySmall) } }
             BottomTool.PROBLEMS -> Text("No language server is connected. Diagnostics are unavailable.", Modifier.padding(12.dp), color = ReversoColors.Muted)
-            BottomTool.TERMINAL -> UnavailableCard("Termux terminal bridge unavailable", "REVERSO does not execute commands itself. Install/configure a supported authenticated Termux companion bridge when available. No terminal session is being faked.")
+            BottomTool.TERMINAL -> UnavailableCard("Interactive Termux bridge is not implemented", "Reverso has no authenticated bridge for live shell input and output. Termux RUN_COMMAND can launch permission-gated commands and return results, but it cannot attach this panel to an interactive shell. This panel does not start or simulate a terminal session.")
             BottomTool.DEBUG_CONSOLE -> Text("No debugger is connected.", Modifier.padding(12.dp), color = ReversoColors.Muted)
             BottomTool.PORTS -> Text("Port forwarding is not connected. No local or remote ports are being reported.", Modifier.padding(12.dp), color = ReversoColors.Muted)
         }
     }
 }
 
-@Composable private fun StatusBar(tab: EditorTab, message: String) {
+@Composable private fun StatusBar(tab: EditorTab, message: String, gitLabel: String) {
     val cursor = tab.value.selection.end.coerceIn(0, tab.value.text.length)
     val before = tab.value.text.take(cursor)
     val line = before.count { it == '\n' } + 1
     val column = before.length - (before.lastIndexOf('\n') + 1) + 1
     Row(Modifier.fillMaxWidth().height(28.dp).background(ReversoColors.Blue).padding(horizontal = 9.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text("Git unavailable", color = ReversoColors.Background, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+        Text(gitLabel, color = ReversoColors.Background, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Spacer(Modifier.width(8.dp))
         Text("${languageForFile(tab.title)} · UTF-8 · Spaces: 4 · Ln $line, Col $column", Modifier.weight(1f), color = ReversoColors.Background, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Spacer(Modifier.width(8.dp))

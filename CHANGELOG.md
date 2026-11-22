@@ -40,3 +40,4 @@
 - Clarified Stable/Beta release channel selection, added a GitHub releases link, persisted popup dismissal, and displayed APK transfer progress.
 - Set explicit sans-serif Material typography and refined the in-use Reverso vector logo for the header and adaptive launcher icon.
 - Adjusted typography and release-link icons to the APIs available in the pinned Compose Material version.
+- Changed the editor status bar to report the actual managed JGit branch/change count and clarified that the terminal panel has no interactive Termux bridge.
